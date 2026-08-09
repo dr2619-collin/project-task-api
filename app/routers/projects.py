@@ -24,14 +24,25 @@ def find_project(project_id: int) -> ProjectResponse:
 
 
 # GET /projects reads the entire Project collection.
-@router.get("", summary="List all projects")
+@router.get(
+    "",
+    response_model=list[ProjectResponse],
+    summary="List all projects",
+    description="Return every project currently stored by the application.",
+)
 def list_projects() -> list[ProjectResponse]:
     """Return every project currently stored in memory."""
     return projects
 
 
 # The value inside {project_id} is supplied by the URL path.
-@router.get("/{project_id}", summary="Get one project")
+@router.get(
+    "/{project_id}",
+    response_model=ProjectResponse,
+    summary="Get one project",
+    description="Return the project identified by the path parameter.",
+    responses={404: {"description": "Project not found"}},
+)
 def get_project(project_id: int) -> ProjectResponse:
     """Return the project with the requested ID."""
     return find_project(project_id)
@@ -40,8 +51,10 @@ def get_project(project_id: int) -> ProjectResponse:
 # POST creates a new resource, so a successful request returns HTTP 201.
 @router.post(
     "",
+    response_model=ProjectResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create a project",
+    description="Create a project from a validated name and description.",
 )
 def create_project(data: ProjectCreate) -> ProjectResponse:
     """Create a project from a validated JSON request body."""
@@ -59,7 +72,13 @@ def create_project(data: ProjectCreate) -> ProjectResponse:
 
 
 # PUT replaces the editable values of the Project identified by the URL.
-@router.put("/{project_id}", summary="Replace a project")
+@router.put(
+    "/{project_id}",
+    response_model=ProjectResponse,
+    summary="Replace a project",
+    description="Replace all editable fields of an existing project.",
+    responses={404: {"description": "Project not found"}},
+)
 def replace_project(
     project_id: int,
     data: ProjectUpdate,
@@ -79,6 +98,11 @@ def replace_project(
     "/{project_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Delete a project",
+    description="Delete a project only when it has no related tasks.",
+    responses={
+        404: {"description": "Project not found"},
+        409: {"description": "Project still has related tasks"},
+    },
 )
 def delete_project(project_id: int) -> Response:
     """Remove a project from the in-memory collection."""
@@ -96,7 +120,13 @@ def delete_project(project_id: int) -> Response:
 
 
 # This nested URL reads the Tasks that belong to one Project.
-@router.get("/{project_id}/tasks", summary="List a project's tasks")
+@router.get(
+    "/{project_id}/tasks",
+    response_model=list[TaskResponse],
+    summary="List a project's tasks",
+    description="Return every task that belongs to the requested project.",
+    responses={404: {"description": "Project not found"}},
+)
 def list_project_tasks(project_id: int) -> list[TaskResponse]:
     """Return every task associated with the requested project."""
     find_project(project_id)

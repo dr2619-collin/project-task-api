@@ -4,22 +4,23 @@ The Project and Task Management API is a simple backend for organizing work into
 
 This repository contains the cumulative course demonstration project for SDEV 3310. Each module branch builds on the previous branch as new FastAPI and software-development concepts are introduced.
 
-## Module 03 scope
+## Module 04 scope
 
-The Module 03 version demonstrates:
+The Module 04 version demonstrates:
 
 - Treating Projects and Tasks as related REST resources
-- Defining request and response schemas with Pydantic `BaseModel`
-- Using Python type hints to describe API data
-- Adding string-length and numeric constraints with `Field`
-- Distinguishing client input from server output
-- Rejecting unexpected JSON fields
-- Applying default values
-- Receiving automatic `422` validation responses
+- Using resource-oriented collection, item, and relationship URLs
+- Generating an OpenAPI contract from FastAPI routes and Pydantic schemas
+- Organizing operations with documented tags
+- Adding application titles, descriptions, and version metadata
+- Adding operation summaries and descriptions
+- Documenting expected success and error responses
+- Adding field descriptions and examples to request and response schemas
+- Reviewing the same contract in Swagger UI, ReDoc, and OpenAPI JSON
 - Storing demonstration data in memory
-- Protecting the relationship between Tasks and Projects
+- Preserving the validation and relationship rules introduced in Module 03
 
-Module 03 replaces the loose dictionaries from Module 02 with validated Pydantic models. The application still uses Python lists so the class can focus on data contracts before database persistence and repository layers are introduced.
+FastAPI uses a code-first workflow in this project: Python routes, type hints, schemas, and metadata generate the OpenAPI contract. Contract-first development reverses that direction by designing OpenAPI first and optionally generating server stubs or client SDKs. The application still uses Python lists so the class can focus on API design before database persistence is introduced.
 
 ## Requirements
 
@@ -72,7 +73,11 @@ The development server will be available at `http://localhost:8000`.
 
 ## Explore the API
 
-Open `http://localhost:8000/docs` to call the endpoints from Swagger UI.
+The application exposes three views of the same OpenAPI contract:
+
+- `http://localhost:8000/docs` — Swagger UI for exploring and calling endpoints
+- `http://localhost:8000/redoc` — ReDoc for reading reference documentation
+- `http://localhost:8000/openapi.json` — the machine-readable OpenAPI document
 
 | Method | URL | CRUD operation | Successful status |
 |---|---|---|---|
@@ -172,4 +177,4 @@ The project uses a simple layer-first structure. Route handlers live in `app/rou
 
 ## Next step
 
-Module 04 develops the generated OpenAPI document into an intentional API design contract.
+Module 05 replaces the in-memory collections with database persistence.
