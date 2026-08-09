@@ -6,13 +6,14 @@ This repository contains the cumulative course demonstration project for SDEV 33
 
 The Module 02 version demonstrates:
 
-- Treating Projects as REST resources
+- Treating Projects and Tasks as related REST resources
 - Designing collection and item URLs
 - Mapping CRUD operations to HTTP methods
 - Reading path parameters and JSON request bodies
 - Returning appropriate HTTP status codes
 - Organizing related routes with `APIRouter`
 - Storing demonstration data in memory
+- Protecting the relationship between Tasks and Projects
 
 Module 02 intentionally uses dictionaries and a Python list. Pydantic data models and stronger validation arrive in Module 03, while database persistence and repository layers arrive in a later module.
 
@@ -78,6 +79,12 @@ Open `http://localhost:8000/docs` to call the endpoints from Swagger UI.
 | `POST` | `/projects` | Create a Project | `201 Created` |
 | `PUT` | `/projects/{project_id}` | Update a Project | `200 OK` |
 | `DELETE` | `/projects/{project_id}` | Delete a Project | `204 No Content` |
+| `GET` | `/projects/{project_id}/tasks` | Read one Project's Tasks | `200 OK` |
+| `GET` | `/tasks` | Read all Tasks | `200 OK` |
+| `GET` | `/tasks/{task_id}` | Read one Task | `200 OK` |
+| `POST` | `/tasks` | Create a Task | `201 Created` |
+| `PUT` | `/tasks/{task_id}` | Update a Task | `200 OK` |
+| `DELETE` | `/tasks/{task_id}` | Delete a Task | `204 No Content` |
 
 Use this JSON body with `POST` and `PUT`:
 
@@ -90,9 +97,22 @@ Use this JSON body with `POST` and `PUT`:
 
 Requesting a Project ID that does not exist returns `404 Not Found`.
 
+Use this JSON body with Task `POST` and `PUT` requests:
+
+```json
+{
+  "title": "Document the API",
+  "description": "Add endpoint examples to the README",
+  "completed": false,
+  "project_id": 1
+}
+```
+
+The `project_id` establishes the relationship between a Task and its Project. Creating or updating a Task with a nonexistent Project returns `404 Not Found`. Deleting a Project that still has Tasks returns `409 Conflict`; delete its Tasks first.
+
 ## Temporary data
 
-Projects are stored in a Python list while the application is running. Changes disappear when the development server restarts. This limitation is intentional: it keeps the focus on REST and CRUD before database persistence is introduced.
+Projects and Tasks are stored in Python lists while the application is running. Changes disappear when the development server restarts. This limitation is intentional: it keeps the focus on REST and CRUD before database persistence is introduced.
 
 ## Current project structure
 
@@ -101,9 +121,11 @@ project-task-api/
 ├── app/
 │   ├── routers/
 │   │   ├── __init__.py
-│   │   └── projects.py
+│   │   ├── projects.py
+│   │   └── tasks.py
 │   ├── __init__.py
-│   └── main.py
+│   ├── main.py
+│   └── storage.py
 ├── pyproject.toml
 └── README.md
 ```

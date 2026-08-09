@@ -1,28 +1,12 @@
 """HTTP endpoints for the Project resource."""
 
-from typing import TypeAlias
-
 from fastapi import APIRouter, Body, HTTPException, Response, status
 
-# Module 02 uses a simple dictionary instead of a Pydantic model.
-# Request and response models will be introduced in Module 03.
-Project: TypeAlias = dict[str, int | str]
+from app.storage import Project, Task, projects, tasks
 
 # Every route in this file begins with /projects and appears under the
 # Projects heading in FastAPI's generated API documentation.
 router = APIRouter(prefix="/projects", tags=["Projects"])
-
-# This list is temporary in-memory storage. Its contents reset whenever the
-# application restarts. A database and repository layer come in a later module.
-projects: list[Project] = [
-    {
-        "id": 1,
-        "name": "Course API",
-        "description": "Build the course demonstration API.",
-    }
-]
-next_project_id = 2
-
 
 def find_project(project_id: int) -> Project:
     """Find one project or return an HTTP 404 error to the client."""
@@ -61,15 +45,14 @@ def create_project(
     description: str = Body(),
 ) -> Project:
     """Create a project from values in the JSON request body."""
-    global next_project_id
-
+    # Generate the next ID from the existing in-memory collection.
+    next_project_id = max((int(project["id"]) for project in projects), default=0) + 1
     project: Project = {
         "id": next_project_id,
         "name": name,
         "description": description,
     }
     projects.append(project)
-    next_project_id += 1
     return project
 
 
@@ -95,5 +78,21 @@ def replace_project(
 def delete_project(project_id: int) -> Response:
     """Remove a project from the in-memory collection."""
     project = find_project(project_id)
+
+    # Do not leave Tasks pointing to a Project that no longer exists.
+    if any(task["project_id"] == project_id for task in tasks):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Delete the project's tasks before deleting the project",
+        )
+
     projects.remove(project)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+# This nested URL reads the Tasks that belong to one Project.
+@router.get("/{project_id}/tasks", summary="List a project's tasks")
+def list_project_tasks(project_id: int) -> list[Task]:
+    """Return every task associated with the requested project."""
+    find_project(project_id)
+    return [task for task in tasks if task["project_id"] == project_id]

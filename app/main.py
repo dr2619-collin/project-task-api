@@ -3,6 +3,7 @@
 from fastapi import FastAPI
 
 from app.routers.projects import router as projects_router
+from app.routers.tasks import router as tasks_router
 
 # Create the FastAPI application object that Uvicorn will load and run.
 # This metadata is also displayed in the generated API documentation.
@@ -15,6 +16,7 @@ app = FastAPI(
 # Add every Project route defined in app/routers/projects.py to the application.
 # Keeping resource routes in a router prevents main.py from becoming crowded.
 app.include_router(projects_router)
+app.include_router(tasks_router)
 
 
 # This decorator connects an HTTP GET request for "/" to read_root().
