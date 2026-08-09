@@ -6,6 +6,8 @@ from pydantic import BaseModel, ConfigDict, Field
 class TaskBase(BaseModel):
     """Define fields shared by every Task schema."""
 
+    # These type hints and Field constraints validate data at runtime and also
+    # become part of the OpenAPI contract displayed by Swagger UI.
     model_config = ConfigDict(
         extra="forbid",
         str_strip_whitespace=True,

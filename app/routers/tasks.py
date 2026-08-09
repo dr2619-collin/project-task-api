@@ -44,8 +44,9 @@ def get_task(task_id: int) -> TaskResponse:
 )
 def create_task(data: TaskCreate) -> TaskResponse:
     """Create a task associated with an existing project."""
-    # Pydantic validates each field. This application-level check then confirms
-    # that the related Project resource actually exists.
+    # FastAPI validates TaskCreate before this function runs and uses the same
+    # schema in OpenAPI. This application-level check then confirms that the
+    # related Project resource actually exists.
     find_project(data.project_id)
     next_task_id = max((task.id for task in tasks), default=0) + 1
 

@@ -45,6 +45,9 @@ def get_project(project_id: int) -> ProjectResponse:
 )
 def create_project(data: ProjectCreate) -> ProjectResponse:
     """Create a project from a validated JSON request body."""
+    # Because data is a Pydantic model, FastAPI reads and validates the JSON
+    # body before this function runs. The same model documents the request in
+    # OpenAPI, and the return annotation documents the response.
     # Generate the next ID from the existing in-memory collection.
     next_project_id = max((project.id for project in projects), default=0) + 1
     project = ProjectResponse(
