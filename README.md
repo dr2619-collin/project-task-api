@@ -10,6 +10,7 @@ The `main` branch contains only this guide. Course code is organized into cumula
 |---|---|
 | `module-01` | Course orientation and API basics |
 | `module-02` | REST, CRUD, status codes, and Project routes |
+| `module-03` | Pydantic data models, field constraints, and request validation |
 
 Each module branch builds on the preceding module. The final module branch will contain the completed demonstration application.
 
