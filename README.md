@@ -1,5 +1,7 @@
 # Project and Task Management API
 
+The Project and Task Management API is a simple backend for organizing work into Projects and Tasks. Users can create, view, update, and delete both resources, and each Task belongs to a Project. As the course progresses, the application will gain validation, database persistence, testing, security, and deployment support.
+
 This repository contains the cumulative course demonstration project for SDEV 3310. Each module branch builds on the previous branch as new FastAPI and software-development concepts are introduced.
 
 ## Module 02 scope
