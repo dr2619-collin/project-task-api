@@ -1,7 +1,13 @@
 """FastAPI application for the Project and Task Management API."""
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 
+from app.database.base import Base
+from app.database.session import engine
+# Import the ORM models before create_all() so SQLAlchemy knows both tables.
+from app import models  # noqa: F401
 from app.routers.projects import router as projects_router
 from app.routers.tasks import router as tasks_router
 
@@ -22,17 +28,27 @@ tags_metadata = [
     },
 ]
 
+
+@asynccontextmanager
+async def lifespan(application: FastAPI):
+    """Create the course-demo tables when the application starts."""
+    # Production systems normally use versioned migrations. create_all() keeps
+    # this first persistence module focused on models, sessions, and layers.
+    Base.metadata.create_all(bind=engine)
+    yield
+
 # Create the FastAPI application object that Uvicorn will load and run.
 # This metadata is also displayed in the generated API documentation.
 app = FastAPI(
     title="Project and Task Management API",
     description=(
         "Manage projects and their associated tasks. This course demonstration "
-        "shows how FastAPI turns routes, Pydantic schemas, and operation metadata "
-        "into an OpenAPI contract."
+        "shows how FastAPI, layered application code, SQLAlchemy, and PostgreSQL "
+        "work together to provide persistent REST resources."
     ),
-    version="0.4.0",
+    version="0.5.0",
     openapi_tags=tags_metadata,
+    lifespan=lifespan,
 )
 
 # Add every Project route defined in app/routers/projects.py to the application.

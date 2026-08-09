@@ -1,40 +1,47 @@
 """HTTP endpoints for the Task resource."""
 
-from fastapi import APIRouter, HTTPException, Response, status
+from typing import Annotated
 
-from app.routers.projects import find_project
+from fastapi import APIRouter, Depends, HTTPException, Response, status
+from sqlalchemy.orm import Session
+
+from app.database.session import get_db
+from app.exceptions import ProjectNotFoundError, TaskNotFoundError
+from app.models.task import Task
 from app.schemas.tasks import TaskCreate, TaskResponse, TaskUpdate
-from app.storage import tasks
+from app.services.tasks import TaskService
 
-# Tasks use the same collection and item URL pattern as Projects.
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
+DatabaseSession = Annotated[Session, Depends(get_db)]
 
 
-def find_task(task_id: int) -> TaskResponse:
-    """Find one task or return an HTTP 404 error to the client."""
-    for task in tasks:
-        if task.id == task_id:
-            return task
-
-    raise HTTPException(
+def task_not_found() -> HTTPException:
+    """Translate a service-layer exception into an HTTP response."""
+    return HTTPException(
         status_code=status.HTTP_404_NOT_FOUND,
         detail="Task not found",
     )
 
 
-# GET /tasks reads the entire Task collection.
+def project_not_found() -> HTTPException:
+    """Describe a missing Project referenced by a Task operation."""
+    return HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="Project not found",
+    )
+
+
 @router.get(
     "",
     response_model=list[TaskResponse],
     summary="List all tasks",
     description="Return every task currently stored by the application.",
 )
-def list_tasks() -> list[TaskResponse]:
-    """Return every task currently stored in memory."""
-    return tasks
+def list_tasks(session: DatabaseSession) -> list[Task]:
+    """Delegate Task retrieval to the service layer."""
+    return TaskService(session).list_tasks()
 
 
-# GET /tasks/{task_id} reads one Task identified by its path parameter.
 @router.get(
     "/{task_id}",
     response_model=TaskResponse,
@@ -42,12 +49,14 @@ def list_tasks() -> list[TaskResponse]:
     description="Return the task identified by the path parameter.",
     responses={404: {"description": "Task not found"}},
 )
-def get_task(task_id: int) -> TaskResponse:
-    """Return the task with the requested ID."""
-    return find_task(task_id)
+def get_task(task_id: int, session: DatabaseSession) -> Task:
+    """Return one Task or translate the missing-resource error."""
+    try:
+        return TaskService(session).get_task(task_id)
+    except TaskNotFoundError:
+        raise task_not_found() from None
 
 
-# A Task can be created only when its related Project exists.
 @router.post(
     "",
     response_model=TaskResponse,
@@ -56,48 +65,35 @@ def get_task(task_id: int) -> TaskResponse:
     description="Create a task and associate it with an existing project.",
     responses={404: {"description": "Related project not found"}},
 )
-def create_task(data: TaskCreate) -> TaskResponse:
-    """Create a task associated with an existing project."""
-    # FastAPI validates TaskCreate before this function runs and uses the same
-    # schema in OpenAPI. This application-level check then confirms that the
-    # related Project resource actually exists.
-    find_project(data.project_id)
-    next_task_id = max((task.id for task in tasks), default=0) + 1
-
-    task = TaskResponse(
-        id=next_task_id,
-        **data.model_dump(),
-    )
-    tasks.append(task)
-    return task
+def create_task(data: TaskCreate, session: DatabaseSession) -> Task:
+    """Create a Task after the service verifies its business rules."""
+    try:
+        return TaskService(session).create_task(data)
+    except ProjectNotFoundError:
+        raise project_not_found() from None
 
 
-# PUT replaces all editable Task values, including its Project relationship.
 @router.put(
     "/{task_id}",
     response_model=TaskResponse,
     summary="Replace a task",
     description="Replace all editable fields and verify the related project.",
-    responses={
-        404: {"description": "Task or related project not found"},
-    },
+    responses={404: {"description": "Task or related project not found"}},
 )
 def replace_task(
     task_id: int,
     data: TaskUpdate,
-) -> TaskResponse:
-    """Replace an existing task after checking its related project."""
-    task = find_task(task_id)
-    find_project(data.project_id)
-    updated_task = TaskResponse(
-        id=task_id,
-        **data.model_dump(),
-    )
-    tasks[tasks.index(task)] = updated_task
-    return updated_task
+    session: DatabaseSession,
+) -> Task:
+    """Replace a Task after checking both related resources."""
+    try:
+        return TaskService(session).replace_task(task_id, data)
+    except TaskNotFoundError:
+        raise task_not_found() from None
+    except ProjectNotFoundError:
+        raise project_not_found() from None
 
 
-# A successful DELETE removes the Task and returns no response body.
 @router.delete(
     "/{task_id}",
     status_code=status.HTTP_204_NO_CONTENT,
@@ -105,8 +101,10 @@ def replace_task(
     description="Delete the task identified by the path parameter.",
     responses={404: {"description": "Task not found"}},
 )
-def delete_task(task_id: int) -> Response:
-    """Remove a task from the in-memory collection."""
-    task = find_task(task_id)
-    tasks.remove(task)
+def delete_task(task_id: int, session: DatabaseSession) -> Response:
+    """Delete a Task and translate the service outcome into HTTP."""
+    try:
+        TaskService(session).delete_task(task_id)
+    except TaskNotFoundError:
+        raise task_not_found() from None
     return Response(status_code=status.HTTP_204_NO_CONTENT)

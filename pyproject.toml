@@ -1,9 +1,11 @@
 [project]
 name = "project-task-api"
-version = "0.4.0"
+version = "0.5.0"
 description = "Course demonstration API for managing projects and tasks"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi[standard]>=0.116.0",
+    "psycopg[binary]>=3.2.0",
+    "sqlalchemy>=2.0.0",
 ]

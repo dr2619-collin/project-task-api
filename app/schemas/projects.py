@@ -42,6 +42,10 @@ class ProjectUpdate(ProjectBase):
 class ProjectResponse(ProjectBase):
     """Describe a Project returned by the API."""
 
+    # Pydantic can read values from SQLAlchemy model attributes, not only from
+    # dictionaries. FastAPI uses this when it converts ORM objects to JSON.
+    model_config = ConfigDict(from_attributes=True)
+
     # The server generates the ID, so it appears in responses but not in
     # ProjectCreate or ProjectUpdate request bodies.
     id: int = Field(

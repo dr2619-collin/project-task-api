@@ -1,41 +1,41 @@
 """HTTP endpoints for the Project resource."""
 
-from fastapi import APIRouter, HTTPException, Response, status
+from typing import Annotated
 
+from fastapi import APIRouter, Depends, HTTPException, Response, status
+from sqlalchemy.orm import Session
+
+from app.database.session import get_db
+from app.exceptions import ProjectHasTasksError, ProjectNotFoundError
+from app.models.project import Project
+from app.models.task import Task
 from app.schemas.projects import ProjectCreate, ProjectResponse, ProjectUpdate
 from app.schemas.tasks import TaskResponse
-from app.storage import projects, tasks
+from app.services.projects import ProjectService
 
-# Every route in this file begins with /projects and appears under the
-# Projects heading in FastAPI's generated API documentation.
 router = APIRouter(prefix="/projects", tags=["Projects"])
+DatabaseSession = Annotated[Session, Depends(get_db)]
 
 
-def find_project(project_id: int) -> ProjectResponse:
-    """Find one project or return an HTTP 404 error to the client."""
-    for project in projects:
-        if project.id == project_id:
-            return project
-
-    raise HTTPException(
+def project_not_found() -> HTTPException:
+    """Translate a service-layer exception into an HTTP response."""
+    return HTTPException(
         status_code=status.HTTP_404_NOT_FOUND,
         detail="Project not found",
     )
 
 
-# GET /projects reads the entire Project collection.
 @router.get(
     "",
     response_model=list[ProjectResponse],
     summary="List all projects",
     description="Return every project currently stored by the application.",
 )
-def list_projects() -> list[ProjectResponse]:
-    """Return every project currently stored in memory."""
-    return projects
+def list_projects(session: DatabaseSession) -> list[Project]:
+    """Delegate Project retrieval to the service layer."""
+    return ProjectService(session).list_projects()
 
 
-# The value inside {project_id} is supplied by the URL path.
 @router.get(
     "/{project_id}",
     response_model=ProjectResponse,
@@ -43,12 +43,14 @@ def list_projects() -> list[ProjectResponse]:
     description="Return the project identified by the path parameter.",
     responses={404: {"description": "Project not found"}},
 )
-def get_project(project_id: int) -> ProjectResponse:
-    """Return the project with the requested ID."""
-    return find_project(project_id)
+def get_project(project_id: int, session: DatabaseSession) -> Project:
+    """Return one Project or translate the missing-resource error."""
+    try:
+        return ProjectService(session).get_project(project_id)
+    except ProjectNotFoundError:
+        raise project_not_found() from None
 
 
-# POST creates a new resource, so a successful request returns HTTP 201.
 @router.post(
     "",
     response_model=ProjectResponse,
@@ -56,22 +58,11 @@ def get_project(project_id: int) -> ProjectResponse:
     summary="Create a project",
     description="Create a project from a validated name and description.",
 )
-def create_project(data: ProjectCreate) -> ProjectResponse:
-    """Create a project from a validated JSON request body."""
-    # Because data is a Pydantic model, FastAPI reads and validates the JSON
-    # body before this function runs. The same model documents the request in
-    # OpenAPI, and the return annotation documents the response.
-    # Generate the next ID from the existing in-memory collection.
-    next_project_id = max((project.id for project in projects), default=0) + 1
-    project = ProjectResponse(
-        id=next_project_id,
-        **data.model_dump(),
-    )
-    projects.append(project)
-    return project
+def create_project(data: ProjectCreate, session: DatabaseSession) -> Project:
+    """Pass validated input to the business and persistence layers."""
+    return ProjectService(session).create_project(data)
 
 
-# PUT replaces the editable values of the Project identified by the URL.
 @router.put(
     "/{project_id}",
     response_model=ProjectResponse,
@@ -82,18 +73,15 @@ def create_project(data: ProjectCreate) -> ProjectResponse:
 def replace_project(
     project_id: int,
     data: ProjectUpdate,
-) -> ProjectResponse:
-    """Replace the name and description of an existing project."""
-    project = find_project(project_id)
-    updated_project = ProjectResponse(
-        id=project_id,
-        **data.model_dump(),
-    )
-    projects[projects.index(project)] = updated_project
-    return updated_project
+    session: DatabaseSession,
+) -> Project:
+    """Replace one Project through the service layer."""
+    try:
+        return ProjectService(session).replace_project(project_id, data)
+    except ProjectNotFoundError:
+        raise project_not_found() from None
 
 
-# A successful DELETE has no response body, so it returns HTTP 204.
 @router.delete(
     "/{project_id}",
     status_code=status.HTTP_204_NO_CONTENT,
@@ -104,22 +92,20 @@ def replace_project(
         409: {"description": "Project still has related tasks"},
     },
 )
-def delete_project(project_id: int) -> Response:
-    """Remove a project from the in-memory collection."""
-    project = find_project(project_id)
-
-    # Do not leave Tasks pointing to a Project that no longer exists.
-    if any(task.project_id == project_id for task in tasks):
+def delete_project(project_id: int, session: DatabaseSession) -> Response:
+    """Translate Project deletion outcomes into HTTP responses."""
+    try:
+        ProjectService(session).delete_project(project_id)
+    except ProjectNotFoundError:
+        raise project_not_found() from None
+    except ProjectHasTasksError:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Delete the project's tasks before deleting the project",
-        )
-
-    projects.remove(project)
+        ) from None
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-# This nested URL reads the Tasks that belong to one Project.
 @router.get(
     "/{project_id}/tasks",
     response_model=list[TaskResponse],
@@ -127,7 +113,9 @@ def delete_project(project_id: int) -> Response:
     description="Return every task that belongs to the requested project.",
     responses={404: {"description": "Project not found"}},
 )
-def list_project_tasks(project_id: int) -> list[TaskResponse]:
-    """Return every task associated with the requested project."""
-    find_project(project_id)
-    return [task for task in tasks if task.project_id == project_id]
+def list_project_tasks(project_id: int, session: DatabaseSession) -> list[Task]:
+    """Return related Tasks after the service verifies the Project."""
+    try:
+        return ProjectService(session).list_project_tasks(project_id)
+    except ProjectNotFoundError:
+        raise project_not_found() from None

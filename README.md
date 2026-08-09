@@ -1,32 +1,25 @@
 # Project and Task Management API
 
-The Project and Task Management API is a simple backend for organizing work into Projects and Tasks. Users can create, view, update, and delete both resources, and each Task belongs to a Project. As the course progresses, the application will gain validation, database persistence, testing, security, and deployment support.
+The Project and Task Management API organizes work into Projects and Tasks. Users can create, view, replace, and delete both resources, and each Task belongs to one Project. This repository is the cumulative course demonstration for SDEV 3310; every module branch builds on the previous one.
 
-This repository contains the cumulative course demonstration project for SDEV 3310. Each module branch builds on the previous branch as new FastAPI and software-development concepts are introduced.
+## Module 05 scope
 
-## Module 04 scope
+Module 05 replaces temporary Python lists with PostgreSQL persistence and introduces a layered source-code structure:
 
-The Module 04 version demonstrates:
+- **Routers** handle HTTP requests and responses.
+- **Services** contain business rules and coordinate operations.
+- **Repositories** perform database operations.
+- **ORM models** map Python classes to PostgreSQL tables.
+- **Pydantic schemas** validate API request and response data.
 
-- Treating Projects and Tasks as related REST resources
-- Using resource-oriented collection, item, and relationship URLs
-- Generating an OpenAPI contract from FastAPI routes and Pydantic schemas
-- Organizing operations with documented tags
-- Adding application titles, descriptions, and version metadata
-- Adding operation summaries and descriptions
-- Documenting expected success and error responses
-- Adding field descriptions and examples to request and response schemas
-- Reviewing the same contract in Swagger UI, ReDoc, and OpenAPI JSON
-- Storing demonstration data in memory
-- Preserving the validation and relationship rules introduced in Module 03
-
-FastAPI uses a code-first workflow in this project: Python routes, type hints, schemas, and metadata generate the OpenAPI contract. Contract-first development reverses that direction by designing OpenAPI first and optionally generating server stubs or client SDKs. The application still uses Python lists so the class can focus on API design before database persistence is introduced.
+The application uses SQLAlchemy 2.x as its ORM and Psycopg as the PostgreSQL driver. Projects and Tasks now remain available after the API restarts.
 
 ## Requirements
 
 - [uv](https://docs.astral.sh/uv/)
+- PostgreSQL running on your computer
 
-`uv` manages the Python version, virtual environment, and project dependencies.
+`uv` manages the Python version, virtual environment, and project dependencies. PostgreSQL runs as a separate local service in this module; a later deployment module will run the API and database in containers.
 
 ### Install uv
 
@@ -42,13 +35,35 @@ Windows PowerShell:
 powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
-Restart your terminal, then verify the installation:
+Restart the terminal and verify the installation:
 
 ```bash
 uv --version
 ```
 
-### Set up the project
+## Set up PostgreSQL
+
+Create a database for the application. From the PostgreSQL command-line client:
+
+```sql
+CREATE DATABASE project_task_api;
+```
+
+Copy the sample configuration file:
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` and replace `change-me` with the password for your local PostgreSQL user:
+
+```text
+DATABASE_URL=postgresql+psycopg://postgres:change-me@localhost:5432/project_task_api
+```
+
+The URL identifies the database dialect and driver, username, password, host, port, and database name. Do not commit `.env`; it is excluded by `.gitignore`.
+
+## Install dependencies
 
 From the repository root, run:
 
@@ -61,120 +76,103 @@ If the required Python version is unavailable, `uv sync` downloads it. It also c
 ## Run the API
 
 ```bash
-uv run uvicorn app.main:app --reload
+uv run uvicorn app.main:app --reload --env-file .env
 ```
 
 - FastAPI defines routes and handles API requests.
 - Uvicorn listens for HTTP connections and passes requests to FastAPI.
 - `uv` manages the Python environment and runs the installed command.
 - `--reload` restarts the development server after source-code changes.
+- `--env-file .env` makes the database URL available to the application.
 
-The development server will be available at `http://localhost:8000`.
+The development server is available at `http://localhost:8000`. On startup, this course version creates the `projects` and `tasks` tables when they do not exist. A later module can introduce versioned database migrations.
 
 ## Explore the API
-
-The application exposes three views of the same OpenAPI contract:
 
 - `http://localhost:8000/docs` — Swagger UI for exploring and calling endpoints
 - `http://localhost:8000/redoc` — ReDoc for reading reference documentation
 - `http://localhost:8000/openapi.json` — the machine-readable OpenAPI document
 
-| Method | URL | CRUD operation | Successful status |
+| Method | URL | Operation | Successful status |
 |---|---|---|---|
-| `GET` | `/` | Read API introduction | `200 OK` |
-| `GET` | `/health` | Read API health | `200 OK` |
-| `GET` | `/projects` | Read all Projects | `200 OK` |
-| `GET` | `/projects/{project_id}` | Read one Project | `200 OK` |
+| `GET` | `/projects` | List Projects | `200 OK` |
+| `GET` | `/projects/{project_id}` | Get one Project | `200 OK` |
 | `POST` | `/projects` | Create a Project | `201 Created` |
-| `PUT` | `/projects/{project_id}` | Update a Project | `200 OK` |
+| `PUT` | `/projects/{project_id}` | Replace a Project | `200 OK` |
 | `DELETE` | `/projects/{project_id}` | Delete a Project | `204 No Content` |
-| `GET` | `/projects/{project_id}/tasks` | Read one Project's Tasks | `200 OK` |
-| `GET` | `/tasks` | Read all Tasks | `200 OK` |
-| `GET` | `/tasks/{task_id}` | Read one Task | `200 OK` |
+| `GET` | `/projects/{project_id}/tasks` | List one Project's Tasks | `200 OK` |
+| `GET` | `/tasks` | List Tasks | `200 OK` |
+| `GET` | `/tasks/{task_id}` | Get one Task | `200 OK` |
 | `POST` | `/tasks` | Create a Task | `201 Created` |
-| `PUT` | `/tasks/{task_id}` | Update a Task | `200 OK` |
+| `PUT` | `/tasks/{task_id}` | Replace a Task | `200 OK` |
 | `DELETE` | `/tasks/{task_id}` | Delete a Task | `204 No Content` |
 
-Use this JSON body with `POST` and `PUT`:
+Create a Project before creating its Tasks:
 
 ```json
 {
   "name": "Demo Project",
-  "description": "Practice REST and CRUD"
+  "description": "Practice layered database persistence"
 }
 ```
 
-Requesting a Project ID that does not exist returns `404 Not Found`.
-
-Project validation rules include:
-
-- `name` is required and must contain 1–100 characters.
-- `description` is required and must contain 1–500 characters.
-- Surrounding whitespace is removed before validation.
-- Unexpected fields are rejected.
-
-Use this JSON body with Task `POST` and `PUT` requests:
+Then use the returned Project ID in a Task request:
 
 ```json
 {
-  "title": "Document the API",
-  "description": "Add endpoint examples to the README",
+  "title": "Add persistence",
+  "description": "Store projects and tasks in PostgreSQL",
   "completed": false,
   "project_id": 1
 }
 ```
 
-The `project_id` establishes the relationship between a Task and its Project. Creating or updating a Task with a nonexistent Project returns `404 Not Found`. Deleting a Project that still has Tasks returns `409 Conflict`; delete its Tasks first.
+The service layer verifies cross-resource rules. A Task cannot reference a nonexistent Project, and a Project cannot be deleted while it still has Tasks. These cases return `404 Not Found` and `409 Conflict`, respectively.
 
-Task validation rules include:
+## Request flow
 
-- `title` is required and must contain 1–120 characters.
-- `description` is required and must contain 1–500 characters.
-- `completed` defaults to `false` when omitted.
-- `project_id` must be greater than zero.
-
-Pydantic validates individual field values. The application separately verifies that the Project identified by `project_id` exists.
-
-## Try a validation error
-
-Send this request to `POST /projects`:
-
-```json
-{
-  "name": "",
-  "description": "Invalid because the name is empty",
-  "owner": "Unexpected field"
-}
+```text
+HTTP request
+    ↓
+Router         HTTP details and Pydantic schemas
+    ↓
+Service        business rules and transaction decisions
+    ↓
+Repository     SQLAlchemy queries and persistence operations
+    ↓
+PostgreSQL     durable Projects and Tasks
 ```
 
-FastAPI returns `422 Unprocessable Content`. The response identifies where each error occurred, which rule failed, and which value was rejected. The route function does not run when request validation fails.
+Repositories call `flush()` so SQLAlchemy sends changes to the current transaction. Services call `commit()` when an operation succeeds or `rollback()` when it fails. This keeps transaction decisions with the use case instead of the HTTP or database layer.
 
-## Temporary data
-
-Projects and Tasks are stored in Python lists while the application is running. Changes disappear when the development server restarts. This limitation is intentional: it keeps the focus on REST and CRUD before database persistence is introduced.
-
-## Current project structure
+## Project structure
 
 ```text
 project-task-api/
 ├── app/
+│   ├── database/
+│   │   ├── base.py
+│   │   └── session.py
+│   ├── models/
+│   │   ├── project.py
+│   │   └── task.py
+│   ├── repositories/
+│   │   ├── projects.py
+│   │   └── tasks.py
 │   ├── routers/
-│   │   ├── __init__.py
 │   │   ├── projects.py
 │   │   └── tasks.py
 │   ├── schemas/
-│   │   ├── __init__.py
 │   │   ├── projects.py
 │   │   └── tasks.py
-│   ├── __init__.py
-│   ├── main.py
-│   └── storage.py
+│   ├── services/
+│   │   ├── projects.py
+│   │   └── tasks.py
+│   ├── exceptions.py
+│   └── main.py
+├── .env.example
 ├── pyproject.toml
 └── README.md
 ```
 
-The project uses a simple layer-first structure. Route handlers live in `app/routers/`, while API data contracts live in `app/schemas/`. Service and repository layers can be added when the course introduces the responsibilities they contain.
-
-## Next step
-
-Module 05 replaces the in-memory collections with database persistence.
+This is a layer-first organization, which makes each responsibility visible while students are learning the architecture. A later course discussion can compare layer-first and feature-first organizations.
