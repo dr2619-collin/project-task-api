@@ -1,0 +1,33 @@
+"""Request and response schemas for the Project resource."""
+
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class ProjectBase(BaseModel):
+    """Define fields shared by every Project schema."""
+
+    # Strip surrounding whitespace and reject JSON fields the model does not
+    # define. These rules apply to every schema that inherits ProjectBase.
+    model_config = ConfigDict(
+        extra="forbid",
+        str_strip_whitespace=True,
+    )
+
+    name: str = Field(min_length=1, max_length=100)
+    description: str = Field(min_length=1, max_length=500)
+
+
+class ProjectCreate(ProjectBase):
+    """Validate the body used to create a Project."""
+
+
+class ProjectUpdate(ProjectBase):
+    """Validate the replacement body used to update a Project."""
+
+
+class ProjectResponse(ProjectBase):
+    """Describe a Project returned by the API."""
+
+    # The server generates the ID, so it appears in responses but not in
+    # ProjectCreate or ProjectUpdate request bodies.
+    id: int = Field(gt=0)

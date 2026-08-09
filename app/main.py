@@ -10,7 +10,7 @@ from app.routers.tasks import router as tasks_router
 app = FastAPI(
     title="Project and Task Management API",
     description="A course demonstration API for managing projects and tasks.",
-    version="0.2.0",
+    version="0.3.0",
 )
 
 # Add every Project route defined in app/routers/projects.py to the application.

@@ -1,18 +1,19 @@
 """HTTP endpoints for the Task resource."""
 
-from fastapi import APIRouter, Body, HTTPException, Response, status
+from fastapi import APIRouter, HTTPException, Response, status
 
 from app.routers.projects import find_project
-from app.storage import Task, tasks
+from app.schemas.tasks import TaskCreate, TaskResponse, TaskUpdate
+from app.storage import tasks
 
 # Tasks use the same collection and item URL pattern as Projects.
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
 
 
-def find_task(task_id: int) -> Task:
+def find_task(task_id: int) -> TaskResponse:
     """Find one task or return an HTTP 404 error to the client."""
     for task in tasks:
-        if task["id"] == task_id:
+        if task.id == task_id:
             return task
 
     raise HTTPException(
@@ -23,14 +24,14 @@ def find_task(task_id: int) -> Task:
 
 # GET /tasks reads the entire Task collection.
 @router.get("", summary="List all tasks")
-def list_tasks() -> list[Task]:
+def list_tasks() -> list[TaskResponse]:
     """Return every task currently stored in memory."""
     return tasks
 
 
 # GET /tasks/{task_id} reads one Task identified by its path parameter.
 @router.get("/{task_id}", summary="Get one task")
-def get_task(task_id: int) -> Task:
+def get_task(task_id: int) -> TaskResponse:
     """Return the task with the requested ID."""
     return find_task(task_id)
 
@@ -41,23 +42,17 @@ def get_task(task_id: int) -> Task:
     status_code=status.HTTP_201_CREATED,
     summary="Create a task",
 )
-def create_task(
-    title: str = Body(),
-    description: str = Body(),
-    completed: bool = Body(),
-    project_id: int = Body(),
-) -> Task:
+def create_task(data: TaskCreate) -> TaskResponse:
     """Create a task associated with an existing project."""
-    find_project(project_id)
-    next_task_id = max((int(task["id"]) for task in tasks), default=0) + 1
+    # Pydantic validates each field. This application-level check then confirms
+    # that the related Project resource actually exists.
+    find_project(data.project_id)
+    next_task_id = max((task.id for task in tasks), default=0) + 1
 
-    task: Task = {
-        "id": next_task_id,
-        "title": title,
-        "description": description,
-        "completed": completed,
-        "project_id": project_id,
-    }
+    task = TaskResponse(
+        id=next_task_id,
+        **data.model_dump(),
+    )
     tasks.append(task)
     return task
 
@@ -66,21 +61,17 @@ def create_task(
 @router.put("/{task_id}", summary="Replace a task")
 def replace_task(
     task_id: int,
-    title: str = Body(),
-    description: str = Body(),
-    completed: bool = Body(),
-    project_id: int = Body(),
-) -> Task:
+    data: TaskUpdate,
+) -> TaskResponse:
     """Replace an existing task after checking its related project."""
     task = find_task(task_id)
-    find_project(project_id)
-    task.update(
-        title=title,
-        description=description,
-        completed=completed,
-        project_id=project_id,
+    find_project(data.project_id)
+    updated_task = TaskResponse(
+        id=task_id,
+        **data.model_dump(),
     )
-    return task
+    tasks[tasks.index(task)] = updated_task
+    return updated_task
 
 
 # A successful DELETE removes the Task and returns no response body.

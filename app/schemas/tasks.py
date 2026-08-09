@@ -1,0 +1,31 @@
+"""Request and response schemas for the Task resource."""
+
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class TaskBase(BaseModel):
+    """Define fields shared by every Task schema."""
+
+    model_config = ConfigDict(
+        extra="forbid",
+        str_strip_whitespace=True,
+    )
+
+    title: str = Field(min_length=1, max_length=120)
+    description: str = Field(min_length=1, max_length=500)
+    completed: bool = False
+    project_id: int = Field(gt=0)
+
+
+class TaskCreate(TaskBase):
+    """Validate the body used to create a Task."""
+
+
+class TaskUpdate(TaskBase):
+    """Validate the replacement body used to update a Task."""
+
+
+class TaskResponse(TaskBase):
+    """Describe a Task returned by the API."""
+
+    id: int = Field(gt=0)
