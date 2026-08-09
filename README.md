@@ -9,6 +9,7 @@ The `main` branch contains only this guide. Course code is organized into cumula
 | Branch | Content |
 |---|---|
 | `module-01` | Course orientation and API basics |
+| `module-02` | REST, CRUD, status codes, and Project routes |
 
 Each module branch builds on the preceding module. The final module branch will contain the completed demonstration application.
 
