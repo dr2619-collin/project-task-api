@@ -14,18 +14,18 @@ class TaskService:
 
     def __init__(self, session: Session):
         self.session = session
-        self.projects = ProjectRepository(session)
-        self.tasks = TaskRepository(session)
+        self.project_repository = ProjectRepository(session)
+        self.task_repository = TaskRepository(session)
 
     def _require_project(self, project_id: int) -> None:
-        if self.projects.get_by_id(project_id) is None:
+        if self.project_repository.get_by_id(project_id) is None:
             raise ProjectNotFoundError
 
     def list_tasks(self) -> list[Task]:
-        return self.tasks.list_all()
+        return self.task_repository.list_all()
 
     def get_task(self, task_id: int) -> Task:
-        task = self.tasks.get_by_id(task_id)
+        task = self.task_repository.get_by_id(task_id)
         if task is None:
             raise TaskNotFoundError
         return task
@@ -33,7 +33,7 @@ class TaskService:
     def create_task(self, data: TaskCreate) -> Task:
         self._require_project(data.project_id)
         try:
-            task = self.tasks.create(data)
+            task = self.task_repository.create(data)
             self.session.commit()
             self.session.refresh(task)
             return task
@@ -45,7 +45,7 @@ class TaskService:
         task = self.get_task(task_id)
         self._require_project(data.project_id)
         try:
-            updated_task = self.tasks.replace(task, data)
+            updated_task = self.task_repository.replace(task, data)
             self.session.commit()
             self.session.refresh(updated_task)
             return updated_task
@@ -56,7 +56,7 @@ class TaskService:
     def delete_task(self, task_id: int) -> None:
         task = self.get_task(task_id)
         try:
-            self.tasks.delete(task)
+            self.task_repository.delete(task)
             self.session.commit()
         except Exception:
             self.session.rollback()

@@ -4,10 +4,9 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from app import models  # noqa: F401  # Register ORM models before create_all().
 from app.database.base import Base
 from app.database.session import engine
-# Import the ORM models before create_all() so SQLAlchemy knows both tables.
-from app import models  # noqa: F401
 from app.routers.projects import router as projects_router
 from app.routers.tasks import router as tasks_router
 
@@ -29,13 +28,14 @@ tags_metadata = [
 ]
 
 
+# The course demo creates missing tables at startup. This keeps the first
+# persistence module focused on ORM models, sessions, and application layers.
 @asynccontextmanager
 async def lifespan(application: FastAPI):
-    """Create the course-demo tables when the application starts."""
-    # Production systems normally use versioned migrations. create_all() keeps
-    # this first persistence module focused on models, sessions, and layers.
+    """Create missing course-demo tables when the application starts."""
     Base.metadata.create_all(bind=engine)
     yield
+
 
 # Create the FastAPI application object that Uvicorn will load and run.
 # This metadata is also displayed in the generated API documentation.

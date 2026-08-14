@@ -15,21 +15,21 @@ class ProjectService:
 
     def __init__(self, session: Session):
         self.session = session
-        self.projects = ProjectRepository(session)
-        self.tasks = TaskRepository(session)
+        self.project_repository = ProjectRepository(session)
+        self.task_repository = TaskRepository(session)
 
     def list_projects(self) -> list[Project]:
-        return self.projects.list_all()
+        return self.project_repository.list_all()
 
     def get_project(self, project_id: int) -> Project:
-        project = self.projects.get_by_id(project_id)
+        project = self.project_repository.get_by_id(project_id)
         if project is None:
             raise ProjectNotFoundError
         return project
 
     def create_project(self, data: ProjectCreate) -> Project:
         try:
-            project = self.projects.create(data)
+            project = self.project_repository.create(data)
             self.session.commit()
             self.session.refresh(project)
             return project
@@ -40,7 +40,7 @@ class ProjectService:
     def replace_project(self, project_id: int, data: ProjectUpdate) -> Project:
         project = self.get_project(project_id)
         try:
-            updated_project = self.projects.replace(project, data)
+            updated_project = self.project_repository.replace(project, data)
             self.session.commit()
             self.session.refresh(updated_project)
             return updated_project
@@ -50,10 +50,10 @@ class ProjectService:
 
     def delete_project(self, project_id: int) -> None:
         project = self.get_project(project_id)
-        if self.tasks.exists_for_project(project_id):
+        if self.task_repository.exists_for_project(project_id):
             raise ProjectHasTasksError
         try:
-            self.projects.delete(project)
+            self.project_repository.delete(project)
             self.session.commit()
         except Exception:
             self.session.rollback()
@@ -61,4 +61,4 @@ class ProjectService:
 
     def list_project_tasks(self, project_id: int) -> list[Task]:
         self.get_project(project_id)
-        return self.tasks.list_by_project(project_id)
+        return self.task_repository.list_by_project(project_id)

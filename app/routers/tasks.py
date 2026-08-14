@@ -12,6 +12,8 @@ from app.schemas.tasks import TaskCreate, TaskResponse, TaskUpdate
 from app.services.tasks import TaskService
 
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
+# FastAPI calls get_db before a route runs, then passes its yielded Session into
+# the `session` parameter wherever DatabaseSession appears below.
 DatabaseSession = Annotated[Session, Depends(get_db)]
 
 

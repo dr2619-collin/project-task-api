@@ -43,25 +43,114 @@ uv --version
 
 ## Set up PostgreSQL
 
-Create a database for the application. From the PostgreSQL command-line client:
+### macOS with Homebrew
 
-```sql
-CREATE DATABASE project_task_api;
+1. Install PostgreSQL 18:
+
+```bash
+brew install postgresql@18
 ```
 
-Copy the sample configuration file:
+2. Start PostgreSQL manually. Homebrew initializes a local database cluster at `/opt/homebrew/var/postgresql@18`. To run PostgreSQL only when you choose, start and stop that cluster manually:
+
+```bash
+# Start PostgreSQL in the background for this development session.
+/opt/homebrew/opt/postgresql@18/bin/pg_ctl \
+  -D /opt/homebrew/var/postgresql@18 \
+  -l /opt/homebrew/var/postgresql@18/server.log start
+
+# Stop PostgreSQL when you are finished.
+/opt/homebrew/opt/postgresql@18/bin/pg_ctl \
+  -D /opt/homebrew/var/postgresql@18 stop
+```
+
+Optional: add short commands to `~/.aliases`:
+
+```bash
+alias pgstart='pg_ctl -D /opt/homebrew/var/postgresql@18 start'
+alias pgstop='pg_ctl -D /opt/homebrew/var/postgresql@18 stop'
+alias pgstatus='pg_ctl -D /opt/homebrew/var/postgresql@18 status'
+```
+
+Reload the aliases in the current terminal:
+
+```bash
+source ~/.aliases
+```
+
+You can then use `pgstart`, `pgstop`, and `pgstatus`. Make sure `~/.aliases` is sourced by your `~/.zshrc` or `~/.bashrc`.
+
+3. Create the course database and its local login role:
+
+```bash
+psql -d postgres -f scripts/setup_database.sql
+```
+
+`-d postgres` tells `psql` to connect to PostgreSQL's existing administrative database named `postgres`. The setup script runs there because `project_task` does not exist yet.
+
+The script creates the local development role `postgres` with password `postgres`, then creates the `project_task` database owned by that role. Run it only once. If it is run again, PostgreSQL reports that the role and database already exist; it does not replace or delete them.
+
+4. Configure the application. Copy the sample configuration file:
 
 ```bash
 cp .env.example .env
 ```
 
-Edit `.env` and replace `change-me` with the password for your local PostgreSQL user:
+The local course-demo connection uses the role and password created by the script:
 
 ```text
-DATABASE_URL=postgresql+psycopg://postgres:change-me@localhost:5432/project_task_api
+DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/project_task
 ```
 
-The URL identifies the database dialect and driver, username, password, host, port, and database name. Do not commit `.env`; it is excluded by `.gitignore`.
+The URL identifies the database dialect and driver, username, password, host, port, and database name. This username and password are for local course development only. Do not commit `.env`; it is excluded by `.gitignore`.
+
+To see SQLAlchemy-generated SQL in the development-server terminal, set this value in `.env`:
+
+```text
+DATABASE_ECHO_SQL=true
+```
+
+Leave it set to `false` when SQL logging is not needed; generated SQL can be noisy.
+
+### How the application creates tables
+
+The setup script creates the database and login role. The application creates the `projects` and `tasks` tables when it starts for the first time against that empty database.
+
+Each SQLAlchemy ORM model contains the table details. For example, the `Project` model declares its table name and primary key:
+
+```python
+class Project(Base):
+    __tablename__ = "projects"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+```
+
+The `Task` model declares its table name and the foreign key that connects each Task to a Project:
+
+```python
+class Task(Base):
+    __tablename__ = "tasks"
+
+    project_id: Mapped[int] = mapped_column(
+        ForeignKey("projects.id"),
+        nullable=False,
+        index=True,
+    )
+```
+
+When FastAPI starts, this code collects the table definitions from the ORM models and asks SQLAlchemy to create any missing tables, columns, primary keys, foreign keys, and indexes:
+
+```python
+@asynccontextmanager
+async def lifespan(application: FastAPI):
+    Base.metadata.create_all(bind=engine)
+    yield
+```
+
+`create_all()` runs at every API startup, but it creates only tables that do not already exist. After the first successful startup, it leaves the existing tables unchanged. It does not update an existing table when an ORM model changes.
+
+For this first persistence module, automatic creation keeps the setup focused on models, sessions, and layers. In a production application, use database migrations—commonly Alembic with SQLAlchemy—to version and apply later schema changes deliberately.
 
 ## Install dependencies
 
@@ -85,7 +174,19 @@ uv run uvicorn app.main:app --reload --env-file .env
 - `--reload` restarts the development server after source-code changes.
 - `--env-file .env` makes the database URL available to the application.
 
-The development server is available at `http://localhost:8000`. On startup, this course version creates the `projects` and `tasks` tables when they do not exist. A later module can introduce versioned database migrations.
+The development server is available at `http://localhost:8000`. On startup, this course version creates the `projects` and `tasks` tables when they do not exist.
+
+After the first successful startup, confirm that the `projects` and `tasks` tables were created in `project_task`.
+
+From a terminal, run:
+
+```bash
+psql -h localhost -U postgres -d project_task -W -c '\dt'
+```
+
+Enter the local course-demo password, `postgres`, when prompted. The result should list the `projects` and `tasks` tables in the `public` schema.
+
+You can also use [pgAdmin](https://www.pgadmin.org/download/), a PostgreSQL GUI client. Connect with host `localhost`, port `5432`, username `postgres`, password `postgres`, and database `project_task`, then open **Schemas → public → Tables** to inspect the tables.
 
 ## Explore the API
 
@@ -144,6 +245,8 @@ PostgreSQL     durable Projects and Tasks
 ```
 
 Repositories call `flush()` so SQLAlchemy sends changes to the current transaction. Services call `commit()` when an operation succeeds or `rollback()` when it fails. This keeps transaction decisions with the use case instead of the HTTP or database layer.
+
+![Request flow through the application layers](docs/sequence-diagram.png)
 
 ## Project structure
 
