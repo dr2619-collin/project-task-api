@@ -1,4 +1,4 @@
-# Testing the Project and Task Management API
+# Unit and Integration Testing
 
 This document explains the automated-test layout introduced in Module 06. It is a living reference: add explanations here as the test suite grows in later modules.
 

@@ -218,7 +218,7 @@ pytest
   -> Testcontainers removes PostgreSQL
 ```
 
-For an explanation of the test folders, shared fixtures, and Testcontainers lifecycle, see [Testing the Project and Task Management API](docs/testing.md).
+For an explanation of the test folders, shared fixtures, and Testcontainers lifecycle, see [Unit and Integration Testing](docs/testing-unit-integration.md).
 
 ## Explore the API
 
