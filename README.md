@@ -2,9 +2,11 @@
 
 The Project and Task Management API organizes work into Projects and Tasks. Users can create, view, replace, and delete both resources, and each Task belongs to one Project. This repository is the cumulative course demonstration for SDEV 3310; every module branch builds on the previous one.
 
-## Module 06 scope
+## Module 07 scope
 
-Module 06 adds automated tests to the persistent, layered API from Module 05. The test suite uses pytest, FastAPI's Starlette-based `TestClient`, and Testcontainers to start an isolated PostgreSQL database automatically for integration tests.
+Module 07 builds on Module 06's automated tests with API conformance, contract, and negative testing. The test suite uses pytest, FastAPI's Starlette-based `TestClient`, Testcontainers, the generated OpenAPI document, and Schemathesis to verify the public API boundary.
+
+Module 06 established unit and integration tests. Module 07 asks a different question: can an API client rely on the paths, request fields, response fields, types, and status codes published in `/openapi.json`?
 
 The application retains the Module 05 persistence architecture:
 
@@ -20,9 +22,9 @@ The application uses SQLAlchemy 2.x as its ORM and Psycopg as the PostgreSQL dri
 
 - [uv](https://docs.astral.sh/uv/)
 - PostgreSQL running on your computer
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) running when you run integration tests
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) running when you run integration or conformance tests
 
-`uv` manages the Python version, virtual environment, and project dependencies. PostgreSQL runs as a separate local service when you run the API. Docker Desktop is used only by Testcontainers during automated integration tests; students do not need to write Docker commands or Dockerfiles.
+`uv` manages the Python version, virtual environment, and project dependencies. PostgreSQL runs as a separate local service when you run the API. Docker Desktop is used only by Testcontainers during automated integration and conformance tests; students do not need to write Docker commands or Dockerfiles.
 
 ### Install uv
 
@@ -195,12 +197,13 @@ You can also use [pgAdmin](https://www.pgadmin.org/download/), a PostgreSQL GUI 
 
 ## Run automated tests
 
-The test suite has two levels:
+The test suite has three complementary levels:
 
 - **Unit tests** isolate one business rule with mocks; they do not use HTTP or a database.
 - **Integration tests** use `TestClient` to send requests through the API and use a temporary PostgreSQL database.
+- **Conformance tests** check the generated OpenAPI contract, representative client-visible responses, and invalid requests.
 
-Before running integration tests, start Docker Desktop. Testcontainers uses Docker Desktop to start a disposable PostgreSQL container automatically. The container is created for the pytest session and removed when the test run finishes. It is never the local `project_task` development database.
+Before running integration or conformance tests, start Docker Desktop. Testcontainers uses Docker Desktop to start a disposable PostgreSQL container automatically. The container is created for the pytest session and removed when the test run finishes. It is never the local `project_task` development database.
 
 Run all tests from the repository root:
 
@@ -218,7 +221,7 @@ pytest
   -> Testcontainers removes PostgreSQL
 ```
 
-For an explanation of the test folders, shared fixtures, and Testcontainers lifecycle, see [Unit and Integration Testing](docs/testing-unit-integration.md).
+For an explanation of the test folders, shared fixtures, and Testcontainers lifecycle, see [Unit and Integration Testing](docs/testing-unit-integration.md). For OpenAPI contract checks, negative tests, and schema-driven testing, see [Conformance and Contract Testing](docs/testing-conformance-contract.md).
 
 ## Explore the API
 
@@ -309,6 +312,9 @@ project-task-api/
 ├── pyproject.toml
 ├── tests/
 │   ├── conftest.py
+│   ├── conformance/
+│   │   ├── test_negative_requests.py
+│   │   └── test_openapi_contract.py
 │   ├── integration/
 │   │   ├── repositories/
 │   │   ├── test_projects_api.py

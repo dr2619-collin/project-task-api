@@ -1,6 +1,6 @@
 [project]
 name = "project-task-api"
-version = "0.6.0"
+version = "0.7.0"
 description = "Course demonstration API for managing projects and tasks"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -22,6 +22,8 @@ addopts = ["--import-mode=importlib"]
 [dependency-groups]
 dev = [
     "httpx2>=2.10.0",
+    "openapi-spec-validator>=0.9.0",
     "pytest>=9.1.1",
+    "schemathesis>=4.24.3",
     "testcontainers[postgres]>=4.15.0",
 ]

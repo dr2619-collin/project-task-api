@@ -1,6 +1,6 @@
 # Unit and Integration Testing
 
-This document explains the automated-test layout introduced in Module 06. It is a living reference: add explanations here as the test suite grows in later modules.
+This document explains the unit and integration-test layout introduced in Module 06. Module 07 adds a separate [Conformance and Contract Testing](testing-conformance-contract.md) guide.
 
 ## Starting point: pytest, TestClient, and Testcontainers
 
@@ -17,7 +17,7 @@ That command means:
 ```text
 uv runs pytest
 pytest discovers tests/
-pytest runs unit and integration tests
+pytest runs unit, integration, and conformance tests
 pytest reports the results
 ```
 
@@ -29,7 +29,7 @@ pytest uses these naming conventions by default:
 
 `TestClient` is the FastAPI/Starlette testing client used for API integration tests. It sends HTTP-style requests directly to the FastAPI application in the same Python process, without starting Uvicorn or listening on port 8000.
 
-Testcontainers is a separate testing tool that uses Docker Desktop to start the temporary PostgreSQL database needed by integration tests. Pytest coordinates all three tools.
+Testcontainers is a separate testing tool that uses Docker Desktop to start the temporary PostgreSQL database needed by integration and conformance tests. Pytest coordinates all three tools.
 
 ## Running the tests
 
@@ -185,9 +185,9 @@ Module 07 overlaps deliberately with Module 06, but has a different question:
 
 Module 07 tests are also full API tests with `TestClient` and PostgreSQL; they are not router-only tests.
 
-### Future `tests/conformance/`
+### `tests/conformance/` in Module 07
 
-Module 07 will add a `conformance/` directory. Those tests will reuse the same Testcontainers fixtures while checking whether the running API follows its generated OpenAPI contract and handles invalid requests predictably.
+Module 07 adds a `conformance/` directory. Its tests reuse the same Testcontainers fixtures while checking whether the running API follows its generated OpenAPI contract and handles invalid requests predictably. See [Conformance and Contract Testing](testing-conformance-contract.md) for the Module 07 layout and rationale.
 
 ## Why `conftest.py` is in `tests/`
 
@@ -200,7 +200,7 @@ tests/conftest.py              -> unit, integration, and conformance tests
 tests/integration/conftest.py  -> integration tests only
 ```
 
-The current fixtures are in `tests/conftest.py` because both Module 06 integration tests and future Module 07 conformance tests need the temporary PostgreSQL database and `TestClient`.
+The current fixtures are in `tests/conftest.py` because both Module 06 integration tests and Module 07 conformance tests need the temporary PostgreSQL database and `TestClient`.
 
 Although the fixtures are available to every test below `tests/`, pytest runs a fixture only when a test requests it. The unit tests do not request the database fixtures, so they do not start Docker.
 
