@@ -152,6 +152,8 @@ async def lifespan(application: FastAPI):
 
 For this first persistence module, automatic creation keeps the setup focused on models, sessions, and layers. In a production application, use database migrations—commonly Alembic with SQLAlchemy—to version and apply later schema changes deliberately.
 
+For a deeper explanation of sessions, transactions, and database connections, see [Database Sessions and Connection Pooling](docs/database-sessions-and-connection-pooling.md).
+
 ## Install dependencies
 
 From the repository root, run:
