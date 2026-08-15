@@ -2,9 +2,11 @@
 
 The Project and Task Management API organizes work into Projects and Tasks. Users can create, view, replace, and delete both resources, and each Task belongs to one Project. This repository is the cumulative course demonstration for SDEV 3310; every module branch builds on the previous one.
 
-## Module 05 scope
+## Module 06 scope
 
-Module 05 replaces temporary Python lists with PostgreSQL persistence and introduces a layered source-code structure:
+Module 06 adds automated tests to the persistent, layered API from Module 05. The test suite uses pytest, FastAPI's Starlette-based `TestClient`, and Testcontainers to start an isolated PostgreSQL database automatically for integration tests.
+
+The application retains the Module 05 persistence architecture:
 
 - **Routers** handle HTTP requests and responses.
 - **Services** contain business rules and coordinate operations.
@@ -12,14 +14,15 @@ Module 05 replaces temporary Python lists with PostgreSQL persistence and introd
 - **ORM models** map Python classes to PostgreSQL tables.
 - **Pydantic schemas** validate API request and response data.
 
-The application uses SQLAlchemy 2.x as its ORM and Psycopg as the PostgreSQL driver. Projects and Tasks now remain available after the API restarts.
+The application uses SQLAlchemy 2.x as its ORM and Psycopg as the PostgreSQL driver. Projects and Tasks remain available after the API restarts.
 
 ## Requirements
 
 - [uv](https://docs.astral.sh/uv/)
 - PostgreSQL running on your computer
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) running when you run integration tests
 
-`uv` manages the Python version, virtual environment, and project dependencies. PostgreSQL runs as a separate local service in this module; a later deployment module will run the API and database in containers.
+`uv` manages the Python version, virtual environment, and project dependencies. PostgreSQL runs as a separate local service when you run the API. Docker Desktop is used only by Testcontainers during automated integration tests; students do not need to write Docker commands or Dockerfiles.
 
 ### Install uv
 
@@ -190,6 +193,33 @@ Enter the local course-demo password, `postgres`, when prompted. The result shou
 
 You can also use [pgAdmin](https://www.pgadmin.org/download/), a PostgreSQL GUI client. Connect with host `localhost`, port `5432`, username `postgres`, password `postgres`, and database `project_task`, then open **Schemas → public → Tables** to inspect the tables.
 
+## Run automated tests
+
+The test suite has two levels:
+
+- **Unit tests** isolate one business rule with mocks; they do not use HTTP or a database.
+- **Integration tests** use `TestClient` to send requests through the API and use a temporary PostgreSQL database.
+
+Before running integration tests, start Docker Desktop. Testcontainers uses Docker Desktop to start a disposable PostgreSQL container automatically. The container is created for the pytest session and removed when the test run finishes. It is never the local `project_task` development database.
+
+Run all tests from the repository root:
+
+```bash
+uv run pytest
+```
+
+The first run may take longer while Docker downloads the PostgreSQL image. Test data is reset before each integration test, so one test does not affect another.
+
+```text
+pytest
+  -> Testcontainers starts temporary PostgreSQL
+  -> TestClient sends API requests
+  -> pytest checks the responses
+  -> Testcontainers removes PostgreSQL
+```
+
+For an explanation of the test folders, shared fixtures, and Testcontainers lifecycle, see [Testing the Project and Task Management API](docs/testing.md).
+
 ## Explore the API
 
 - `http://localhost:8000/docs` — Swagger UI for exploring and calling endpoints
@@ -277,6 +307,15 @@ project-task-api/
 │   └── main.py
 ├── .env.example
 ├── pyproject.toml
+├── tests/
+│   ├── conftest.py
+│   ├── integration/
+│   │   ├── repositories/
+│   │   ├── test_projects_api.py
+│   │   └── test_tasks_api.py
+│   └── unit/
+│       ├── schemas/
+│       └── services/
 └── README.md
 ```
 

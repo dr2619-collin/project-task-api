@@ -46,7 +46,7 @@ app = FastAPI(
         "shows how FastAPI, layered application code, SQLAlchemy, and PostgreSQL "
         "work together to provide persistent REST resources."
     ),
-    version="0.5.0",
+    version="0.6.0",
     openapi_tags=tags_metadata,
     lifespan=lifespan,
 )
