@@ -1,12 +1,15 @@
 """FastAPI application for the Project and Task Management API."""
 
+import os
 from contextlib import asynccontextmanager
 
+from anyio.to_thread import current_default_thread_limiter
 from fastapi import FastAPI
 
 from app import models  # noqa: F401  # Register ORM models before create_all().
 from app.database.base import Base
 from app.database.session import engine
+from app.routers.async_demo import router as async_demo_router
 from app.routers.projects import router as projects_router
 from app.routers.tasks import router as tasks_router
 
@@ -25,6 +28,10 @@ tags_metadata = [
         "name": "Tasks",
         "description": "Create and manage tasks that belong to projects.",
     },
+    {
+        "name": "Async I/O",
+        "description": "Compare synchronous and asynchronous simulated I/O waits.",
+    },
 ]
 
 
@@ -32,7 +39,17 @@ tags_metadata = [
 # persistence module focused on ORM models, sessions, and application layers.
 @asynccontextmanager
 async def lifespan(application: FastAPI):
-    """Create missing course-demo tables when the application starts."""
+    """Configure startup resources and create missing course-demo tables."""
+    # Normal `def` routes and synchronous dependencies use AnyIO's shared
+    # threadpool. The default of 40 is appropriate for normal local use. Set
+    # SYNC_THREADPOOL_SIZE only for the Module 09 concurrency demonstration.
+    threadpool_size = int(os.getenv("SYNC_THREADPOOL_SIZE", "40"))
+    if threadpool_size < 1:
+        raise ValueError("SYNC_THREADPOOL_SIZE must be at least 1.")
+
+    current_default_thread_limiter().total_tokens = threadpool_size
+
+    # Create any database tables defined by ORM models that do not yet exist.
     Base.metadata.create_all(bind=engine)
     yield
 
@@ -46,7 +63,7 @@ app = FastAPI(
         "shows how FastAPI, layered application code, SQLAlchemy, and PostgreSQL "
         "work together to provide persistent REST resources."
     ),
-    version="0.8.0",
+    version="0.9.0",
     openapi_tags=tags_metadata,
     lifespan=lifespan,
 )
@@ -55,6 +72,7 @@ app = FastAPI(
 # Keeping resource routes in a router prevents main.py from becoming crowded.
 app.include_router(projects_router)
 app.include_router(tasks_router)
+app.include_router(async_demo_router)
 
 
 # This decorator connects an HTTP GET request for "/" to read_root().

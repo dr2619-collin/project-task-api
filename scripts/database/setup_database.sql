@@ -1,5 +1,5 @@
 -- Local course-demo database setup. Run once with:
--- psql -d postgres -f scripts/setup_database.sql
+-- psql -d postgres -f scripts/database/setup_database.sql
 
 CREATE ROLE postgres WITH LOGIN PASSWORD 'postgres';
 

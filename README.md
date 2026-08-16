@@ -2,13 +2,15 @@
 
 The Project and Task Management API organizes work into Projects and Tasks. Users can create, view, replace, and delete both resources, and each Task belongs to one Project. This repository is the cumulative course demonstration for SDEV 3310; every module branch builds on the previous one.
 
-## Module 08 scope
+## Module 09 scope
 
-Module 08 adds authentication and role-based authorization to the persisted Project and Task API. A Bearer token establishes a course-demo identity; the identity's role determines whether the request may read or change resources.
+Module 09 introduces synchronous and asynchronous I/O handling in FastAPI. It adds two public demonstration endpoints that simulate a slow external dependency without relying on a real third-party API or changing Project and Task data.
 
-Both demo roles may use protected `GET` endpoints. Only the administrator role may use `POST`, `PUT`, and `DELETE`. The root endpoint, health endpoint, and API documentation remain public so students can start and explore the application.
+The existing Project and Task CRUD routes remain synchronous because the current SQLAlchemy `Session` and PostgreSQL driver usage are synchronous. Changing only a route from `def` to `async def` would not make database work asynchronous and could block the event loop.
 
-This module deliberately uses two static, environment-configured course-demo tokens. It does not include a user database, password login, OAuth provider, JWT issuance, refresh tokens, or token revocation. Those production concerns are discussed separately without expanding the implementation scope.
+The `/async-demo/sync-wait` endpoint uses a normal `def` route and a blocking simulated wait. FastAPI runs it in the threadpool. The `/async-demo/async-wait` endpoint uses `async def` and `await asyncio.sleep()`, allowing its coroutine to yield to the event loop while waiting.
+
+For the Module 09 demo procedure, k6 results, and the event-loop, threadpool, and async-I/O explanation, see [Async I/O](docs/async-io.md).
 
 The application retains the Module 05 persistence architecture:
 
@@ -25,6 +27,7 @@ The application uses SQLAlchemy 2.x as its ORM and Psycopg as the PostgreSQL dri
 - [uv](https://docs.astral.sh/uv/)
 - PostgreSQL running on your computer
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) running when you run integration or conformance tests
+- [k6](https://grafana.com/docs/k6/latest/) for the local load demonstration
 
 `uv` manages the Python version, virtual environment, and project dependencies. PostgreSQL runs as a separate local service when you run the API. Docker Desktop is used only by Testcontainers during automated integration and conformance tests; students do not need to write Docker commands or Dockerfiles.
 
@@ -90,7 +93,7 @@ You can then use `pgstart`, `pgstop`, and `pgstatus`. Make sure `~/.aliases` is 
 3. Create the course database and its local login role:
 
 ```bash
-psql -d postgres -f scripts/setup_database.sql
+psql -d postgres -f scripts/database/setup_database.sql
 ```
 
 `-d postgres` tells `psql` to connect to PostgreSQL's existing administrative database named `postgres`. The setup script runs there because `project_task` does not exist yet.
@@ -236,6 +239,8 @@ For an explanation of the test folders, shared fixtures, and Testcontainers life
 
 The authentication and authorization implementation, role policy, and security-test coverage are explained in [Authentication and Authorization](docs/authentication-and-authorization.md).
 
+For the sync-versus-async I/O demonstration, see [Async I/O](docs/async-io.md).
+
 ## Explore the API
 
 - `http://localhost:8000/docs` — Swagger UI for exploring and calling endpoints
@@ -327,18 +332,26 @@ project-task-api/
 │   │   ├── projects.py
 │   │   └── tasks.py
 │   ├── routers/
+│   │   ├── async_demo.py
 │   │   ├── projects.py
 │   │   └── tasks.py
 │   ├── schemas/
+│   │   ├── async_demo.py
 │   │   ├── projects.py
 │   │   └── tasks.py
 │   ├── services/
+│   │   ├── async_demo.py
 │   │   ├── projects.py
 │   │   └── tasks.py
 │   ├── exceptions.py
 │   └── main.py
 ├── .env.example
 ├── pyproject.toml
+├── scripts/
+│   ├── database/
+│   │   └── setup_database.sql
+│   └── load/
+│       └── async-demo.js
 ├── tests/
 │   ├── conftest.py
 │   ├── conformance/
