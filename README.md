@@ -2,11 +2,13 @@
 
 The Project and Task Management API organizes work into Projects and Tasks. Users can create, view, replace, and delete both resources, and each Task belongs to one Project. This repository is the cumulative course demonstration for SDEV 3310; every module branch builds on the previous one.
 
-## Module 07 scope
+## Module 08 scope
 
-Module 07 builds on Module 06's automated tests with API conformance, contract, and negative testing. The test suite uses pytest, FastAPI's Starlette-based `TestClient`, Testcontainers, the generated OpenAPI document, and Schemathesis to verify the public API boundary.
+Module 08 adds authentication and role-based authorization to the persisted Project and Task API. A Bearer token establishes a course-demo identity; the identity's role determines whether the request may read or change resources.
 
-Module 06 established unit and integration tests. Module 07 asks a different question: can an API client rely on the paths, request fields, response fields, types, and status codes published in `/openapi.json`?
+Both demo roles may use protected `GET` endpoints. Only the administrator role may use `POST`, `PUT`, and `DELETE`. The root endpoint, health endpoint, and API documentation remain public so students can start and explore the application.
+
+This module deliberately uses two static, environment-configured course-demo tokens. It does not include a user database, password login, OAuth provider, JWT issuance, refresh tokens, or token revocation. Those production concerns are discussed separately without expanding the implementation scope.
 
 The application retains the Module 05 persistence architecture:
 
@@ -108,6 +110,15 @@ DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/project_task
 ```
 
 The URL identifies the database dialect and driver, username, password, host, port, and database name. This username and password are for local course development only. Do not commit `.env`; it is excluded by `.gitignore`.
+
+Module 08 also defines two local course-demo Bearer tokens:
+
+```text
+DEMO_MEMBER_TOKEN=member-demo-token
+DEMO_ADMIN_TOKEN=admin-demo-token
+```
+
+They demonstrate the request flow only. They are not production secrets and are intentionally easy to recognize in this course repository.
 
 To see SQLAlchemy-generated SQL in the development-server terminal, set this value in `.env`:
 
@@ -223,11 +234,22 @@ pytest
 
 For an explanation of the test folders, shared fixtures, and Testcontainers lifecycle, see [Unit and Integration Testing](docs/testing-unit-integration.md). For OpenAPI contract checks, negative tests, and schema-driven testing, see [Conformance and Contract Testing](docs/testing-conformance-contract.md).
 
+The authentication and authorization implementation, role policy, and security-test coverage are explained in [Authentication and Authorization](docs/authentication-and-authorization.md).
+
 ## Explore the API
 
 - `http://localhost:8000/docs` — Swagger UI for exploring and calling endpoints
 - `http://localhost:8000/redoc` — ReDoc for reading reference documentation
 - `http://localhost:8000/openapi.json` — the machine-readable OpenAPI document
+
+### Authorize in Swagger UI
+
+Open `http://localhost:8000/docs`, select **Authorize**, and enter a course-demo token. Swagger UI adds the `Authorization: Bearer ...` header to protected requests.
+
+- `member-demo-token` can use the protected `GET` endpoints.
+- `admin-demo-token` can use all protected `GET`, `POST`, `PUT`, and `DELETE` endpoints.
+
+Requests without a valid token receive `401 Unauthorized`. A valid member token on a write endpoint receives `403 Forbidden`.
 
 | Method | URL | Operation | Successful status |
 |---|---|---|---|
@@ -270,6 +292,10 @@ The service layer verifies cross-resource rules. A Task cannot reference a nonex
 ```text
 HTTP request
     ↓
+Authentication  validates the Bearer token and identifies its role
+    ↓
+Authorization   permits the action for that role or returns 403
+    ↓
 Router         HTTP details and Pydantic schemas
     ↓
 Service        business rules and transaction decisions
@@ -288,6 +314,9 @@ Repositories call `flush()` so SQLAlchemy sends changes to the current transacti
 ```text
 project-task-api/
 ├── app/
+│   ├── auth/
+│   │   ├── dependencies.py
+│   │   └── users.py
 │   ├── database/
 │   │   ├── base.py
 │   │   └── session.py
@@ -313,13 +342,16 @@ project-task-api/
 ├── tests/
 │   ├── conftest.py
 │   ├── conformance/
+│   │   ├── test_authentication_authorization_contract.py
 │   │   ├── test_negative_requests.py
 │   │   └── test_openapi_contract.py
 │   ├── integration/
 │   │   ├── repositories/
+│   │   ├── test_authentication_authorization_api.py
 │   │   ├── test_projects_api.py
 │   │   └── test_tasks_api.py
 │   └── unit/
+│       ├── auth/
 │       ├── schemas/
 │       └── services/
 └── README.md

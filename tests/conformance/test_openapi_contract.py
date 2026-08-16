@@ -114,10 +114,10 @@ def test_openapi_document_describes_project_and_task_schemas(
 
 
 def test_create_project_matches_its_documented_public_response(
-    client: TestClient,
+    admin_client: TestClient,
 ) -> None:
     """A created Project has the documented status and response shape."""
-    response = client.post(
+    response = admin_client.post(
         "/projects",
         json={
             "name": "Contract Test Project",
@@ -135,23 +135,23 @@ def test_create_project_matches_its_documented_public_response(
 
 
 def test_missing_project_matches_documented_not_found_response(
-    client: TestClient,
+    admin_client: TestClient,
 ) -> None:
     """A consumer receives the documented 404 outcome for a missing Project."""
-    response = client.get("/projects/999999")
+    response = admin_client.get("/projects/999999")
 
     assert response.status_code == 404
     assert response.json()["detail"]
 
 
 def test_project_with_tasks_matches_documented_conflict_response(
-    client: TestClient,
+    admin_client: TestClient,
 ) -> None:
     """Deleting a Project with Tasks returns the documented 409 outcome."""
-    project = create_project(client)
-    create_task(client, project["id"])
+    project = create_project(admin_client)
+    create_task(admin_client, project["id"])
 
-    response = client.delete(f"/projects/{project['id']}")
+    response = admin_client.delete(f"/projects/{project['id']}")
 
     assert response.status_code == 409
     assert response.json()["detail"]
@@ -161,9 +161,9 @@ def test_project_with_tasks_matches_documented_conflict_response(
 
 
 @pytest.fixture
-def openapi_schema(client: TestClient) -> Any:
+def openapi_schema(admin_client: TestClient) -> Any:
     """Load the contract only after the isolated API is running."""
-    # Importing the application only after requesting `client` preserves the
+    # Importing the application only after requesting `admin_client` preserves the
     # Module 06 fixture order: DATABASE_URL already points to Testcontainers.
     from app.main import app
 
@@ -175,7 +175,7 @@ def openapi_schema(client: TestClient) -> Any:
 # `openapi_schema` above is a normal pytest fixture. This lazy `schema` object
 # tells Schemathesis to request that fixture later, when pytest is running a
 # test—not while Python is importing this file. That preserves the Module 06
-# setup order, where `client` first points DATABASE_URL at Testcontainers.
+# setup order, where `admin_client` first points DATABASE_URL at Testcontainers.
 #
 # The .include(...) call then limits generated tests to three safe GET routes.
 schema = schemathesis.pytest.from_fixture("openapi_schema").include(
@@ -188,17 +188,18 @@ schema = schemathesis.pytest.from_fixture("openapi_schema").include(
 # above. Schemathesis resolves `openapi_schema`, creates one `case` argument
 # for each selected OpenAPI operation, and runs this function once per case.
 # `case` is supplied by Schemathesis, not by a pytest fixture. `client` is the
-# normal pytest fixture that provides the running in-process FastAPI app.
+# pytest fixture that provides the running in-process FastAPI app with an
+# administrator's Authorization header.
 @schema.parametrize()
 def test_generated_read_only_responses_conform_to_openapi(
     case: Any,
-    client: TestClient,
+    admin_client: TestClient,
 ) -> None:
     """Generated safe requests receive responses valid for their OpenAPI schema."""
     # TestClient sends the generated request directly to the running ASGI app.
     # Schemathesis then checks the status code, headers, and response body
     # against the operation described in `/openapi.json`.
-    case.call_and_validate(session=client)
+    case.call_and_validate(session=admin_client)
 
 
 # HELPERS

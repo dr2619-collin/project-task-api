@@ -5,6 +5,12 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
+from app.auth.dependencies import (
+    ADMIN_RESPONSES,
+    AUTHENTICATED_RESPONSES,
+    AdminUser,
+    CurrentUser,
+)
 from app.database.session import get_db
 from app.exceptions import ProjectNotFoundError, TaskNotFoundError
 from app.models.task import Task
@@ -38,9 +44,13 @@ def project_not_found() -> HTTPException:
     response_model=list[TaskResponse],
     summary="List all tasks",
     description="Return every task currently stored by the application.",
+    responses=AUTHENTICATED_RESPONSES,
 )
-def list_tasks(session: DatabaseSession) -> list[Task]:
-    """Delegate Task retrieval to the service layer."""
+def list_tasks(
+    current_user: CurrentUser,
+    session: DatabaseSession,
+) -> list[Task]:
+    """Return Tasks after FastAPI authenticates the requesting user."""
     return TaskService(session).list_tasks()
 
 
@@ -49,9 +59,16 @@ def list_tasks(session: DatabaseSession) -> list[Task]:
     response_model=TaskResponse,
     summary="Get one task",
     description="Return the task identified by the path parameter.",
-    responses={404: {"description": "Task not found"}},
+    responses={
+        **AUTHENTICATED_RESPONSES,
+        404: {"description": "Task not found"},
+    },
 )
-def get_task(task_id: int, session: DatabaseSession) -> Task:
+def get_task(
+    task_id: int,
+    current_user: CurrentUser,
+    session: DatabaseSession,
+) -> Task:
     """Return one Task or translate the missing-resource error."""
     try:
         return TaskService(session).get_task(task_id)
@@ -65,9 +82,16 @@ def get_task(task_id: int, session: DatabaseSession) -> Task:
     status_code=status.HTTP_201_CREATED,
     summary="Create a task",
     description="Create a task and associate it with an existing project.",
-    responses={404: {"description": "Related project not found"}},
+    responses={
+        **ADMIN_RESPONSES,
+        404: {"description": "Related project not found"},
+    },
 )
-def create_task(data: TaskCreate, session: DatabaseSession) -> Task:
+def create_task(
+    data: TaskCreate,
+    admin_user: AdminUser,
+    session: DatabaseSession,
+) -> Task:
     """Create a Task after the service verifies its business rules."""
     try:
         return TaskService(session).create_task(data)
@@ -80,11 +104,15 @@ def create_task(data: TaskCreate, session: DatabaseSession) -> Task:
     response_model=TaskResponse,
     summary="Replace a task",
     description="Replace all editable fields and verify the related project.",
-    responses={404: {"description": "Task or related project not found"}},
+    responses={
+        **ADMIN_RESPONSES,
+        404: {"description": "Task or related project not found"},
+    },
 )
 def replace_task(
     task_id: int,
     data: TaskUpdate,
+    admin_user: AdminUser,
     session: DatabaseSession,
 ) -> Task:
     """Replace a Task after checking both related resources."""
@@ -101,9 +129,16 @@ def replace_task(
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Delete a task",
     description="Delete the task identified by the path parameter.",
-    responses={404: {"description": "Task not found"}},
+    responses={
+        **ADMIN_RESPONSES,
+        404: {"description": "Task not found"},
+    },
 )
-def delete_task(task_id: int, session: DatabaseSession) -> Response:
+def delete_task(
+    task_id: int,
+    admin_user: AdminUser,
+    session: DatabaseSession,
+) -> Response:
     """Delete a Task and translate the service outcome into HTTP."""
     try:
         TaskService(session).delete_task(task_id)

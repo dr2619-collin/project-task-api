@@ -9,16 +9,16 @@ from starlette.testclient import TestClient
 # These tests verify required fields, unknown fields, and field boundaries.
 
 
-def test_create_project_rejects_missing_required_field(client: TestClient) -> None:
+def test_create_project_rejects_missing_required_field(admin_client: TestClient) -> None:
     """A request without the required description is rejected with 422."""
-    response = client.post("/projects", json={"name": "Incomplete Project"})
+    response = admin_client.post("/projects", json={"name": "Incomplete Project"})
 
     assert_validation_error(response)
 
 
-def test_create_project_rejects_undocumented_field(client: TestClient) -> None:
+def test_create_project_rejects_undocumented_field(admin_client: TestClient) -> None:
     """extra='forbid' prevents a client from sending an unknown JSON field."""
-    response = client.post(
+    response = admin_client.post(
         "/projects",
         json={
             "name": "Unexpected Field",
@@ -43,12 +43,12 @@ def test_create_project_rejects_undocumented_field(client: TestClient) -> None:
     ids=["blank-name", "name-over-maximum"],
 )
 def test_create_project_rejects_invalid_boundary_values(
-    client: TestClient,
+    admin_client: TestClient,
     name: str,
     description: str,
 ) -> None:
     """Pydantic enforces documented Project name boundaries over HTTP."""
-    response = client.post(
+    response = admin_client.post(
         "/projects",
         json={"name": name, "description": description},
     )
@@ -66,11 +66,11 @@ def test_create_project_rejects_invalid_boundary_values(
     ids=["project-id", "task-id"],
 )
 def test_typed_path_parameters_reject_wrong_data_type(
-    client: TestClient,
+    admin_client: TestClient,
     path: str,
 ) -> None:
     """FastAPI rejects a non-integer resource identifier before the route runs."""
-    response = client.get(path)
+    response = admin_client.get(path)
 
     assert_validation_error(response)
 
@@ -85,17 +85,22 @@ def test_typed_path_parameters_reject_wrong_data_type(
     ["/projects/999999", "/tasks/999999"],
     ids=["project", "task"],
 )
-def test_missing_resources_return_not_found(client: TestClient, path: str) -> None:
+def test_missing_resources_return_not_found(
+    admin_client: TestClient,
+    path: str,
+) -> None:
     """A valid identifier with no matching resource returns the documented 404."""
-    response = client.get(path)
+    response = admin_client.get(path)
 
     assert response.status_code == 404
     assert response.json()["detail"]
 
 
-def test_create_task_rejects_nonexistent_parent_project(client: TestClient) -> None:
+def test_create_task_rejects_nonexistent_parent_project(
+    admin_client: TestClient,
+) -> None:
     """The Task relationship rule becomes a client-visible 404 response."""
-    response = client.post(
+    response = admin_client.post(
         "/tasks",
         json={
             "title": "Orphan Task",
@@ -110,13 +115,13 @@ def test_create_task_rejects_nonexistent_parent_project(client: TestClient) -> N
 
 
 def test_delete_project_rejects_project_with_related_tasks(
-    client: TestClient,
+    admin_client: TestClient,
 ) -> None:
     """A Project with Tasks remains protected by the documented 409 conflict."""
-    project = create_project(client)
-    create_task(client, project["id"])
+    project = create_project(admin_client)
+    create_task(admin_client, project["id"])
 
-    response = client.delete(f"/projects/{project['id']}")
+    response = admin_client.delete(f"/projects/{project['id']}")
 
     assert response.status_code == 409
     assert response.json()["detail"]

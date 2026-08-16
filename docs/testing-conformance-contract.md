@@ -34,6 +34,7 @@ The **OpenAPI contract** describes the API's paths, HTTP methods, request bodies
 tests/
 ├── conftest.py
 ├── conformance/
+│   ├── test_authentication_authorization_contract.py
 │   ├── test_negative_requests.py
 │   └── test_openapi_contract.py
 ├── integration/
@@ -42,7 +43,7 @@ tests/
     └── ... Module 06 tests ...
 ```
 
-The conformance tests reuse the Module 06 `client` fixture:
+The conformance tests reuse the Module 06 `client` fixture. Tests that need normal protected resource behavior use the Module 08 `admin_client` fixture, which adds the demonstration administrator's Bearer header:
 
 ```text
 TestClient -> FastAPI router -> service -> repository -> SQLAlchemy -> PostgreSQL Testcontainer
@@ -94,6 +95,8 @@ The targeted tests send real requests and verify consumer-visible behavior:
 
 The tests assert stable contract details—status codes and JSON shapes—not the exact human-readable `detail` text unless that text is intentionally documented as part of the contract.
 
+Module 08 also adds a focused security-contract test. It confirms that OpenAPI publishes the reusable HTTP Bearer scheme, marks representative resource operations as protected, and documents their `401` and `403` outcomes.
+
 ## Negative testing
 
 A **negative test** intentionally sends invalid or disallowed input. It passes when the API rejects the request safely and predictably.
@@ -131,7 +134,7 @@ The connection between the fixture and the generated test is intentionally defer
 
 ```python
 @pytest.fixture
-def openapi_schema(client: TestClient) -> Any:
+def openapi_schema(admin_client: TestClient) -> Any:
     from app.main import app
 
     return schemathesis.openapi.from_asgi("/openapi.json", app)
@@ -143,7 +146,7 @@ schema = schemathesis.pytest.from_fixture("openapi_schema").include(
 )
 ```
 
-`openapi_schema` is an ordinary pytest fixture. It requests `client`, which ensures the Testcontainer database and in-process FastAPI application are ready before FastAPI is imported and the OpenAPI document is loaded.
+`openapi_schema` is an ordinary pytest fixture. It requests `admin_client`, which ensures the Testcontainer database and in-process FastAPI application are ready before FastAPI is imported and the OpenAPI document is loaded. The administrator header lets the generated protected `GET` requests reach their successful response behavior.
 
 `schemathesis.pytest.from_fixture("openapi_schema")` creates a **lazy schema**. It means, “when a generated test runs, ask pytest for the fixture named `openapi_schema`.” It does not create the real schema while pytest is collecting test files. This matters because importing the application during test collection would happen before the test fixture sets `DATABASE_URL` to the temporary database.
 
@@ -153,9 +156,9 @@ The lazy schema is then used as a decorator:
 @schema.parametrize()
 def test_generated_read_only_responses_conform_to_openapi(
     case: Any,
-    client: TestClient,
+    admin_client: TestClient,
 ) -> None:
-    case.call_and_validate(session=client)
+    case.call_and_validate(session=admin_client)
 ```
 
 `@schema.parametrize()` transforms one Python test function into one generated subtest for each selected OpenAPI operation. In this project, it produces `GET /health`, `GET /projects`, and `GET /tasks`.
@@ -164,13 +167,13 @@ def test_generated_read_only_responses_conform_to_openapi(
 
 ```text
 Schemathesis-generated subtest
-  -> pytest creates client
+  -> pytest creates admin_client
       -> Testcontainers starts PostgreSQL
       -> TestClient starts FastAPI in-process
   -> Schemathesis resolves openapi_schema
       -> reads /openapi.json from FastAPI
   -> Schemathesis provides one case
-  -> case.call_and_validate(session=client)
+  -> case.call_and_validate(session=admin_client)
       -> sends the request through TestClient
       -> validates the status, headers, and response body against OpenAPI
 ```

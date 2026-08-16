@@ -127,3 +127,48 @@ def client(reset_database: None) -> Generator[TestClient, None, None]:
         yield test_client
 
     # Leaving this context closes TestClient and runs FastAPI lifespan cleanup.
+
+
+@pytest.fixture
+def member_headers() -> dict[str, str]:
+    """Provide the Authorization header for the course-demo member role."""
+    from app.auth.users import Role, demo_token_for
+
+    return {"Authorization": f"Bearer {demo_token_for(Role.MEMBER)}"}
+
+
+@pytest.fixture
+def admin_headers() -> dict[str, str]:
+    """Provide the Authorization header for the course-demo administrator role."""
+    from app.auth.users import Role, demo_token_for
+
+    return {"Authorization": f"Bearer {demo_token_for(Role.ADMIN)}"}
+
+
+@pytest.fixture
+def admin_client(
+    client: TestClient,
+    admin_headers: dict[str, str],
+) -> TestClient:
+    """Provide the per-test API client configured as an administrator.
+
+    The ordinary ``client`` fixture stays unauthenticated so Module 08 tests
+    can explicitly verify missing-token behavior. Each test receives a fresh
+    TestClient, so setting these default headers cannot affect another test.
+    """
+    client.headers.update(admin_headers)
+    return client
+
+
+@pytest.fixture
+def member_client(
+    client: TestClient,
+    member_headers: dict[str, str],
+) -> TestClient:
+    """Provide the per-test API client configured as a member.
+
+    Each test receives a fresh TestClient, so setting this default header does
+    not affect the ordinary unauthenticated client or administrator tests.
+    """
+    client.headers.update(member_headers)
+    return client

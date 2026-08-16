@@ -50,9 +50,12 @@ tests/
 │   ├── repositories/
 │   │   ├── test_projects.py
 │   │   └── test_tasks.py
+│   ├── test_authentication_authorization_api.py
 │   ├── test_projects_api.py
 │   └── test_tasks_api.py
 └── unit/
+    ├── auth/
+    │   └── test_dependencies.py
     ├── schemas/
     │   ├── test_projects.py
     │   └── test_tasks.py
@@ -67,7 +70,7 @@ The same source name may appear in more than one unit-test layer, such as `tests
 
 ### `tests/unit/`
 
-Unit tests verify Python behavior in isolation. The current tests cover Pydantic schema rules and every public ProjectService and TaskService method.
+Unit tests verify Python behavior in isolation. The current tests cover Pydantic schema rules, every public ProjectService and TaskService method, and the Module 08 authentication and authorization dependency logic.
 
 These tests use `MagicMock` objects in place of the Session and repositories. They do not make HTTP requests, start a PostgreSQL container, or use the application database.
 
