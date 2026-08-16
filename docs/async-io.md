@@ -11,6 +11,12 @@ Module 09 compares two public routes that simulate waiting for a slow external d
 
 Both endpoints are public so the demonstration focuses on concurrency rather than authorization. They accept an optional `seconds` query parameter from `0` through `3`; valid requests return `200 OK`. The simulated `asyncio.sleep()` is a deterministic stand-in for waiting on an external service, file operation, or async-compatible database driver.
 
+## k6 load script
+
+[k6](https://grafana.com/docs/k6/latest/) is a command-line load-testing tool. Unlike pytest, it starts virtual users that make real HTTP requests to a running API and then summarizes timing, request-count, and check results.
+
+The course script is [scripts/load/async-demo.js](../scripts/load/async-demo.js). Read its comments to see how the virtual-user scenario, command-line endpoint selection, HTTP request, and response check work together.
+
 The k6 script starts 80 virtual users, each making one request. With the same simulated `0.25`-second (250 ms) wait, async requests can wait together. Synchronous requests use threadpool workers, so requests beyond the configured worker limit wait for an earlier group to finish.
 
 | Scenario | Total requests | Expected groups | Expected completion time | Calculation |
