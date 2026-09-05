@@ -1,0 +1,7 @@
+# Software Development Principles and Practices
+
+This cumulative guide follows the Project and Task API in the order concepts appear. Each module link leads to a detailed, language-neutral explanation grounded in that branch of the project.
+
+## Contents
+
+- [Module 01 — Project foundations](software-development/module-01-project-foundations.md)

@@ -1,0 +1,22 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Local environment variables
+.env
+
+# IDE settings
+.idea/
+*.iml
+
+# Test and analysis caches
+.pytest_cache/
+.coverage
+htmlcov/
