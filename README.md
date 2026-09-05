@@ -4,20 +4,22 @@ The Project and Task Management API is a simple backend for organizing work into
 
 This repository contains the cumulative course demonstration project for SDEV 3310. Each module branch builds on the previous branch as new FastAPI and software-development concepts are introduced.
 
-## Module 02 scope
+## Module 03 scope
 
-The Module 02 version demonstrates:
+The Module 03 version demonstrates:
 
 - Treating Projects and Tasks as related REST resources
-- Designing collection and item URLs
-- Mapping CRUD operations to HTTP methods
-- Reading path parameters and JSON request bodies
-- Returning appropriate HTTP status codes
-- Organizing related routes with `APIRouter`
+- Defining request and response schemas with Pydantic `BaseModel`
+- Using Python type hints to describe API data
+- Adding string-length and numeric constraints with `Field`
+- Distinguishing client input from server output
+- Rejecting unexpected JSON fields
+- Applying default values
+- Receiving automatic `422` validation responses
 - Storing demonstration data in memory
 - Protecting the relationship between Tasks and Projects
 
-Module 02 intentionally uses dictionaries and a Python list. Pydantic data models and stronger validation arrive in Module 03, while database persistence and repository layers arrive in a later module.
+Module 03 replaces the loose dictionaries from Module 02 with validated Pydantic models. The application still uses Python lists so the class can focus on data contracts before database persistence and repository layers are introduced.
 
 See [Software Development Principles and Practices](docs/software-development-principles.md) for the development practices demonstrated by the current module.
 
@@ -92,6 +94,13 @@ Use this JSON body with `POST` and `PUT`:
 
 Requesting a Project ID that does not exist returns `404 Not Found`.
 
+Project validation rules include:
+
+- `name` is required and must contain 1–100 characters.
+- `description` is required and must contain 1–500 characters.
+- Surrounding whitespace is removed before validation.
+- Unexpected fields are rejected.
+
 Use this JSON body with Task `POST` and `PUT` requests:
 
 ```json
@@ -104,6 +113,29 @@ Use this JSON body with Task `POST` and `PUT` requests:
 ```
 
 The `project_id` establishes the relationship between a Task and its Project. Creating or updating a Task with a nonexistent Project returns `404 Not Found`. Deleting a Project that still has Tasks returns `409 Conflict`; delete its Tasks first.
+
+Task validation rules include:
+
+- `title` is required and must contain 1–120 characters.
+- `description` is required and must contain 1–500 characters.
+- `completed` defaults to `false` when omitted.
+- `project_id` must be greater than zero.
+
+Pydantic validates individual field values. The application separately verifies that the Project identified by `project_id` exists.
+
+## Try a validation error
+
+Send this request to `POST /projects`:
+
+```json
+{
+  "name": "",
+  "description": "Invalid because the name is empty",
+  "owner": "Unexpected field"
+}
+```
+
+FastAPI returns `422 Unprocessable Content`. The response identifies where each error occurred, which rule failed, and which value was rejected. The route function does not run when request validation fails.
 
 ## Temporary data
 
@@ -118,6 +150,10 @@ project-task-api/
 │   │   ├── __init__.py
 │   │   ├── projects.py
 │   │   └── tasks.py
+│   ├── schemas/
+│   │   ├── __init__.py
+│   │   ├── projects.py
+│   │   └── tasks.py
 │   ├── __init__.py
 │   ├── main.py
 │   └── storage.py
@@ -128,8 +164,8 @@ project-task-api/
 └── README.md
 ```
 
-The project uses a simple layer-first structure. Route handlers live in `app/routers/`; service and repository layers can be added when the course introduces the responsibilities they contain.
+The project uses a simple layer-first structure. Route handlers live in `app/routers/`, while API data contracts live in `app/schemas/`. Service and repository layers can be added when the course introduces the responsibilities they contain.
 
 ## Next step
 
-Module 03 introduces Pydantic models and request validation.
+Module 04 develops the generated OpenAPI document into an intentional API design contract.

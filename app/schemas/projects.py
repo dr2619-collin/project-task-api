@@ -1,0 +1,34 @@
+"""Request and response schemas for the Project resource."""
+
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class ProjectBase(BaseModel):
+    """Define fields shared by every Project schema."""
+
+    # FastAPI uses these type hints and Field constraints in two ways:
+    # 1. Pydantic validates request and response data at runtime.
+    # 2. FastAPI adds the types and constraints to the OpenAPI document,
+    #    which Swagger UI displays as API documentation.
+    # Strip surrounding whitespace and reject JSON fields the model does not
+    # define. These rules apply to every schema that inherits ProjectBase.
+    model_config = ConfigDict(
+        extra="forbid",
+        str_strip_whitespace=True,
+        frozen=True,
+    )
+
+    name: str = Field(min_length=1, max_length=100)
+    description: str = Field(min_length=1, max_length=500)
+
+
+class ProjectInput(ProjectBase):
+    """Validate client-controlled fields for a Project create or replacement."""
+
+
+class ProjectResponse(ProjectBase):
+    """Describe a Project returned by the API."""
+
+    # The server generates the ID, so it appears in responses but not in
+    # ProjectInput request bodies.
+    id: int = Field(gt=0)
