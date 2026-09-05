@@ -5,12 +5,34 @@ from fastapi import FastAPI
 from app.routers.projects import router as projects_router
 from app.routers.tasks import router as tasks_router
 
+# Tag descriptions organize related operations and explain each resource group
+# in Swagger UI and ReDoc.
+tags_metadata = [
+    {
+        "name": "General",
+        "description": "Basic application information and health checks.",
+    },
+    {
+        "name": "Projects",
+        "description": "Create and manage projects and view their related tasks.",
+    },
+    {
+        "name": "Tasks",
+        "description": "Create and manage tasks that belong to projects.",
+    },
+]
+
 # Create the FastAPI application object that Uvicorn will load and run.
 # This metadata is also displayed in the generated API documentation.
 app = FastAPI(
     title="Project and Task Management API",
-    description="A course demonstration API for managing projects and tasks.",
-    version="0.3.0",
+    description=(
+        "Manage projects and their associated tasks. This course demonstration "
+        "shows how FastAPI turns routes, Pydantic schemas, and operation metadata "
+        "into an OpenAPI contract."
+    ),
+    version="0.4.0",
+    openapi_tags=tags_metadata,
 )
 
 # Add every Project route defined in app/routers/projects.py to the application.

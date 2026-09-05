@@ -23,14 +23,25 @@ def find_task(task_id: int) -> TaskResponse:
 
 
 # GET /tasks reads the entire Task collection.
-@router.get("", summary="List all tasks")
+@router.get(
+    "",
+    response_model=list[TaskResponse],
+    summary="List all tasks",
+    description="Return every task currently stored by the application.",
+)
 def list_tasks() -> list[TaskResponse]:
     """Return every task currently stored in memory."""
     return tasks
 
 
 # GET /tasks/{task_id} reads one Task identified by its path parameter.
-@router.get("/{task_id}", summary="Get one task")
+@router.get(
+    "/{task_id}",
+    response_model=TaskResponse,
+    summary="Get one task",
+    description="Return the task identified by the path parameter.",
+    responses={404: {"description": "Task not found"}},
+)
 def get_task(task_id: int) -> TaskResponse:
     """Return the task with the requested ID."""
     return find_task(task_id)
@@ -39,8 +50,11 @@ def get_task(task_id: int) -> TaskResponse:
 # A Task can be created only when its related Project exists.
 @router.post(
     "",
+    response_model=TaskResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create a task",
+    description="Create a task and associate it with an existing project.",
+    responses={404: {"description": "Related project not found"}},
 )
 def create_task(data: TaskInput) -> TaskResponse:
     """Create a task associated with an existing project."""
@@ -59,7 +73,15 @@ def create_task(data: TaskInput) -> TaskResponse:
 
 
 # PUT replaces all editable Task values, including its Project relationship.
-@router.put("/{task_id}", summary="Replace a task")
+@router.put(
+    "/{task_id}",
+    response_model=TaskResponse,
+    summary="Replace a task",
+    description="Replace all editable fields and verify the related project.",
+    responses={
+        404: {"description": "Task or related project not found"},
+    },
+)
 def replace_task(
     task_id: int,
     data: TaskInput,
@@ -80,6 +102,8 @@ def replace_task(
     "/{task_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Delete a task",
+    description="Delete the task identified by the path parameter.",
+    responses={404: {"description": "Task not found"}},
 )
 def delete_task(task_id: int) -> Response:
     """Remove a task from the in-memory collection."""
