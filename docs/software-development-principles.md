@@ -8,3 +8,4 @@ This cumulative guide follows the Project and Task API in the order concepts app
 - [Module 02 — Clear, maintainable resource APIs](software-development/module-02-resource-apis.md)
 - [Module 03 — Data contracts and validation](software-development/module-03-data-contracts.md)
 - [Module 04 — Public API contracts](software-development/module-04-public-api-contracts.md)
+- [Module 05 — Layered persistence and abstractions](software-development/module-05-layered-persistence-and-abstractions.md)

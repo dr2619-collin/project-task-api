@@ -39,4 +39,63 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 uv --version
 ```
 
-Continue with [Clone the project](../README.md#clone-the-project) in the project README.
+## 4. Clone the project (skip if already done)
+
+If you have not already cloned the repository, run:
+
+```bash
+cd "$HOME"
+git clone https://github.com/dr2619-collin/project-task-api.git
+cd project-task-api
+git switch module-05
+```
+
+If the project is already cloned, skip these commands and open a terminal in
+the existing `project-task-api` folder.
+
+## 5. Set up PostgreSQL
+
+1. Install PostgreSQL 18:
+
+```bash
+brew install postgresql@18
+```
+
+2. Start PostgreSQL manually. Homebrew initializes a local database cluster at `/opt/homebrew/var/postgresql@18`. To run PostgreSQL only when you choose, start and stop that cluster manually:
+
+```bash
+# Start PostgreSQL in the background for this development session.
+/opt/homebrew/opt/postgresql@18/bin/pg_ctl \
+  -D /opt/homebrew/var/postgresql@18 \
+  -l /opt/homebrew/var/postgresql@18/server.log start
+
+# Stop PostgreSQL when you are finished.
+/opt/homebrew/opt/postgresql@18/bin/pg_ctl \
+  -D /opt/homebrew/var/postgresql@18 stop
+```
+
+Optional: add short commands to `~/.aliases`:
+
+```bash
+alias pgstart='pg_ctl -D /opt/homebrew/var/postgresql@18 start'
+alias pgstop='pg_ctl -D /opt/homebrew/var/postgresql@18 stop'
+alias pgstatus='pg_ctl -D /opt/homebrew/var/postgresql@18 status'
+```
+
+Reload the aliases in the current terminal:
+
+```bash
+source ~/.aliases
+```
+
+You can then use `pgstart`, `pgstop`, and `pgstatus`. Make sure `~/.aliases` is sourced by your `~/.zshrc` or `~/.bashrc`.
+
+3. Create the course database and its local database user account from the `project-task-api` folder:
+
+```bash
+psql -d postgres -f scripts/setup_database.sql
+```
+
+`-d postgres` tells `psql` to connect to PostgreSQL's existing administrative database named `postgres`. The setup script runs there because `project_task` does not exist yet.
+
+The script creates the local database user account `postgres` with password `postgres` when it does not already exist, then creates the `project_task` database owned by that account. It leaves existing resources in place, so it is safe to run again.
