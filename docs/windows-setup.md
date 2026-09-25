@@ -54,7 +54,7 @@ If you have not already cloned the repository, run:
 cd $HOME
 git clone https://github.com/dr2619-collin/project-task-api.git
 cd project-task-api
-git switch module-05
+git switch module-06
 ```
 
 If the project is already cloned, skip these commands and open a terminal in
@@ -148,3 +148,25 @@ Set-Service -Name "postgresql-x64-18" -StartupType Manual
 
 This changes only the service startup behavior. It does not delete the
 `project_task` database or any of its data.
+
+## 6. Install Docker Desktop for Module 06 testing
+
+For Module 06, Docker Desktop runs the PostgreSQL integration tests.
+Testcontainers starts a temporary PostgreSQL container automatically; it does
+not use the local `project_task` database.
+
+1. Follow Docker's official [Windows installation instructions](https://docs.docker.com/desktop/setup/install/windows-install/).
+2. Use the recommended WSL 2 backend when the installer asks. Docker Desktop
+   may prompt you to enable or update WSL 2.
+3. Start **Docker Desktop** from the Start menu and wait until it reports that
+   the engine is running. Testcontainers uses Linux containers, which are the
+   Docker Desktop default.
+4. Open a new PowerShell tab and verify that both the Docker client and engine
+   are available:
+
+```powershell
+docker version
+```
+
+When Docker is running, use `uv run pytest` from the project folder to run the
+full test suite.

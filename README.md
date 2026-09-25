@@ -2,9 +2,13 @@
 
 The Project and Task Management API organizes work into Projects and Tasks. Users can create, view, replace, and delete both resources, and each Task belongs to one Project. This repository is the cumulative course demonstration for SDEV 3310; every module branch builds on the previous one.
 
-## Module 05 scope
+## Module 06 scope
 
-Module 05 adds PostgreSQL persistence alongside the temporary Python lists and introduces a layered source-code structure:
+Module 06 adds automated tests to the persistent, layered API from Module 05. The test suite uses pytest, FastAPI's Starlette-based `TestClient`, and Testcontainers to start an isolated PostgreSQL database automatically for integration tests.
+
+For detailed unit and integration test implementation information, see [Unit and Integration Testing](docs/testing-unit-integration.md).
+
+The application retains the Module 05 persistence architecture:
 
 - **Routers** handle HTTP requests and responses.
 - **Services** contain business rules and coordinate operations.
@@ -12,7 +16,7 @@ Module 05 adds PostgreSQL persistence alongside the temporary Python lists and i
 - **ORM models** map Python classes to PostgreSQL tables.
 - **Pydantic schemas** validate API request and response data.
 
-The application uses SQLAlchemy 2.x as its ORM and Psycopg as the PostgreSQL driver. Projects and Tasks now remain available after the API restarts.
+The application uses SQLAlchemy 2.x as its ORM and Psycopg as the PostgreSQL driver. Projects and Tasks remain available after the API restarts.
 
 The service layer has database-backed and in-memory implementations behind the same service contracts. PostgreSQL is the default; set `STORAGE_BACKEND=memory` in `.env` to run the application with process-local lists instead.
 
@@ -36,14 +40,8 @@ your terminal:
 ```text
 git clone https://github.com/dr2619-collin/project-task-api.git
 cd project-task-api
-git switch module-05
+git switch module-06
 ```
-
-## Set up PostgreSQL
-
-PostgreSQL must be running on your computer for this module. Follow the PostgreSQL setup instructions in the guide for your operating system: [Windows](docs/windows-setup.md#5-set-up-postgresql) or [macOS](docs/macos-setup.md#5-set-up-postgresql).
-
-For a deeper explanation of sessions, transactions, and database connections, see [Database Sessions and Connection Pooling](docs/database-sessions-and-connection-pooling.md).
 
 ## Install dependencies
 
@@ -131,6 +129,59 @@ In pgAdmin 4:
 - Database: `project_task`
 
 Then open **Schemas → public → Tables** to inspect the tables.
+
+For a deeper explanation of sessions, transactions, and database connections, see [Database Sessions and Connection Pooling](docs/database-sessions-and-connection-pooling.md).
+
+## Run automated tests
+
+If Docker Desktop is not installed and running, follow the Docker Desktop setup instructions for your operating system: [Windows](docs/windows-setup.md#6-install-docker-desktop-for-module-06-testing) or [macOS](docs/macos-setup.md#6-install-docker-desktop-for-module-06-testing).
+
+The test suite has two levels:
+
+- **Unit tests** isolate business rules; some use mocked database collaborators, and others use the in-memory services. They do not use HTTP or PostgreSQL.
+- **Integration tests** use `TestClient` to send requests through the API and use a temporary PostgreSQL database.
+
+Before running integration tests, start Docker Desktop. Testcontainers uses Docker Desktop to start a disposable PostgreSQL container automatically. The container is created for the pytest session and removed when the test run finishes. It is never the local `project_task` development database.
+
+Run all tests from the repository root:
+
+```bash
+uv run pytest
+```
+
+The first run may take longer while Docker downloads the PostgreSQL image. Test data is reset before each integration test, so one test does not affect another.
+
+```text
+pytest
+  -> Testcontainers starts temporary PostgreSQL
+  -> TestClient sends API requests
+  -> pytest checks the responses
+  -> Testcontainers removes PostgreSQL
+```
+
+Run only unit tests:
+
+```bash
+uv run pytest tests/unit
+```
+
+Run only API router integration tests:
+
+```bash
+uv run pytest tests/integration/routers
+```
+
+Run one repository integration test file:
+
+```bash
+uv run pytest tests/integration/repositories/test_projects.py
+```
+
+Choose the smallest test level that gives meaningful confidence. Use
+integration tests when correctness depends on framework, ORM, or database
+behavior.
+
+For detailed unit and integration test implementation information, see [Unit and Integration Testing](docs/testing-unit-integration.md).
 
 ## Explore the API
 
@@ -271,6 +322,18 @@ project-task-api/
 │   └── main.py
 ├── .env.example
 ├── pyproject.toml
+├── tests/
+│   ├── conftest.py
+│   ├── integration/
+│   │   ├── repositories/
+│   │   └── routers/
+│   │       ├── test_projects.py
+│   │       └── test_tasks.py
+│   └── unit/
+│       ├── schemas/
+│       └── services/
+│           ├── projects/
+│           └── tasks/
 └── README.md
 ```
 
@@ -282,8 +345,9 @@ The same application could use a **feature-first organization**, grouping each r
 project-task-api/
 ├── app/
 │   ├── database/
-│   │   ├── base.py
 │   │   └── session.py
+│   ├── models/
+│   │   └── base.py
 │   ├── projects/
 │   │   ├── exceptions.py
 │   │   ├── models.py
