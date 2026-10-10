@@ -47,7 +47,7 @@ If you have not already cloned the repository, run:
 cd "$HOME"
 git clone https://github.com/dr2619-collin/project-task-api.git
 cd project-task-api
-git switch module-05
+git switch module-06
 ```
 
 If the project is already cloned, skip these commands and open a terminal in
@@ -99,3 +99,22 @@ psql -d postgres -f scripts/setup_database.sql
 `-d postgres` tells `psql` to connect to PostgreSQL's existing administrative database named `postgres`. The setup script runs there because `project_task` does not exist yet.
 
 The script creates the local database user account `postgres` with password `postgres` when it does not already exist, then creates the `project_task` database owned by that account. It leaves existing resources in place, so it is safe to run again.
+
+## 6. Install Docker Desktop for Module 06 testing
+
+For Module 06, Docker Desktop runs the PostgreSQL integration tests.
+Testcontainers starts a temporary PostgreSQL container automatically; it does
+not use the local `project_task` database.
+
+1. Follow Docker's official [macOS installation instructions](https://docs.docker.com/desktop/setup/install/mac-install/). Download the installer that matches your Mac: Apple silicon or Intel.
+2. Open **Docker Desktop** from the Applications folder and complete its first-run setup.
+3. Wait until Docker Desktop reports that the engine is running, then open a
+   new Terminal window and verify that both the Docker client and engine are
+   available:
+
+```bash
+docker version
+```
+
+When Docker is running, use `uv run pytest` from the project folder to run the
+full test suite.
