@@ -82,14 +82,11 @@ checks the interaction. This lets a test verify that:
 - `DatabaseTaskService` checks the parent Project before creating a Task.
 - A missing parent prevents `TaskRepository.create()` from being called.
 
-For example, a database-service test patches the repository at the location
-where the service uses it:
+For example, a database-service test stubs the repository at the module
+location where the service uses it:
 
 ```python
-with patch(
-    "app.services.projects.database.ProjectRepository",
-    return_value=repository,
-):
+with when(database_module).ProjectRepository(session).thenReturn(repository):
     result = DatabaseProjectService(factory).create_project(data)
 ```
 

@@ -2,11 +2,13 @@
 
 The Project and Task Management API organizes work into Projects and Tasks. Users can create, view, replace, and delete both resources, and each Task belongs to one Project. This repository is the cumulative course demonstration for SDEV 3310; every module branch builds on the previous one.
 
-## Module 06 scope
+## Module 07 scope
 
-Module 06 adds automated tests to the persistent, layered API from Module 05. The test suite uses pytest, FastAPI's Starlette-based `TestClient`, and Testcontainers for database-backed integration tests. It also exercises the same routers with the in-memory backend.
+Module 07 builds on Module 06's automated tests with API conformance, contract, and negative testing. The test suite uses pytest, FastAPI's Starlette-based `TestClient`, Testcontainers, the generated OpenAPI document, and Schemathesis to verify the public API boundary.
 
-For detailed unit and integration test implementation information, see [Unit and Integration Testing](docs/testing-unit-integration.md).
+Module 06 established unit and integration tests. Module 07 asks a different question: can an API client rely on the paths, request fields, response fields, types, and status codes published in `/openapi.json`?
+
+For detailed test implementation information, see [Unit and Integration Testing](docs/testing-unit-integration.md) and [Conformance and Contract Testing](docs/testing-conformance-contract.md).
 
 The application retains the Module 05 persistence architecture:
 
@@ -136,12 +138,13 @@ For a deeper explanation of sessions, transactions, and database connections, se
 
 If Docker Desktop is not installed and running, follow the Docker Desktop setup instructions for your operating system: [Windows](docs/windows-setup.md#6-install-docker-desktop-for-module-06-testing) or [macOS](docs/macos-setup.md#6-install-docker-desktop-for-module-06-testing).
 
-The test suite has two levels:
+The test suite has three complementary levels:
 
 - **Unit tests** isolate business rules; some use mocked database collaborators, and others use the in-memory services. They do not use HTTP or PostgreSQL.
 - **Database integration tests** use `TestClient` to send requests through the API and use a temporary PostgreSQL database. Memory router integration tests use the same application boundary without PostgreSQL.
+- **Conformance tests** check the generated OpenAPI contract, representative client-visible responses, and invalid requests.
 
-Before running integration tests, start Docker Desktop. Testcontainers uses Docker Desktop to start a disposable PostgreSQL container automatically. The container is created for the pytest session and removed when the test run finishes. It is never the local `project_task` development database.
+Before running integration or conformance tests, start Docker Desktop. Testcontainers uses Docker Desktop to start a disposable PostgreSQL container automatically. The container is created for the pytest session and removed when the test run finishes. It is never the local `project_task` development database.
 
 Run all tests from the repository root:
 
@@ -171,6 +174,12 @@ Run only API router integration tests:
 uv run pytest tests/integration/routers
 ```
 
+Run only conformance tests:
+
+```bash
+uv run pytest tests/conformance
+```
+
 The router tests use two application configurations:
 
 - the `database_client` fixture exercises the database-backed services with
@@ -194,7 +203,7 @@ Choose the smallest test level that gives meaningful confidence. Use
 integration tests when correctness depends on framework, ORM, or database
 behavior.
 
-For detailed unit and integration test implementation information, see [Unit and Integration Testing](docs/testing-unit-integration.md).
+For detailed test implementation information, see [Unit and Integration Testing](docs/testing-unit-integration.md) and [Conformance and Contract Testing](docs/testing-conformance-contract.md).
 
 ## Explore the API
 
@@ -337,6 +346,9 @@ project-task-api/
 ├── pyproject.toml
 ├── tests/
 │   ├── conftest.py
+│   ├── conformance/
+│   │   ├── test_negative_requests.py
+│   │   └── test_openapi_contract.py
 │   ├── integration/
 │   │   ├── repositories/
 │   │   └── routers/
@@ -355,39 +367,3 @@ project-task-api/
 ```
 
 This is a layer-first organization, which makes each responsibility visible while students are learning the architecture.
-
-The same application could use a **feature-first organization**, grouping each resource's router, service, repository, schema, and model together:
-
-```text
-project-task-api/
-├── app/
-│   ├── database/
-│   │   └── session.py
-│   ├── models/
-│   │   └── base.py
-│   ├── projects/
-│   │   ├── exceptions.py
-│   │   ├── models.py
-│   │   ├── repository.py
-│   │   ├── router.py
-│   │   ├── schemas.py
-│   │   └── services/
-│   │       ├── base.py
-│   │       ├── database.py
-│   │       └── in_memory.py
-│   ├── tasks/
-│   │   ├── exceptions.py
-│   │   ├── models.py
-│   │   ├── repository.py
-│   │   ├── router.py
-│   │   ├── schemas.py
-│   │   └── services/
-│   │       ├── base.py
-│   │       ├── database.py
-│   │       └── in_memory.py
-│   ├── dependencies.py
-│   └── main.py
-├── .env.example
-├── pyproject.toml
-└── README.md
-```
