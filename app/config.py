@@ -2,7 +2,7 @@
 
 from enum import StrEnum
 
-from pydantic import model_validator
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     database_url: str | None = None
     database_echo_sql: bool = False
     storage_backend: StorageBackend = StorageBackend.DATABASE
+    sync_threadpool_size: int = Field(default=40, ge=1)
     demo_member_token: str = "member-demo-token"
     demo_admin_token: str = "admin-demo-token"
 
