@@ -11,10 +11,11 @@ from starlette.testclient import TestClient
 
 def test_create_project_rejects_missing_required_field(
     database_client: TestClient,
+    admin_headers: dict[str, str],
 ) -> None:
     """A request without the required description is rejected with 422."""
     response = database_client.post(
-        "/projects", json={"name": "Incomplete Project"}
+        "/projects", json={"name": "Incomplete Project"}, headers=admin_headers
     )
 
     assert_validation_error(response)
@@ -22,6 +23,7 @@ def test_create_project_rejects_missing_required_field(
 
 def test_create_project_rejects_undocumented_field(
     database_client: TestClient,
+    admin_headers: dict[str, str],
 ) -> None:
     """extra='forbid' prevents a client from sending an unknown JSON field."""
     response = database_client.post(
@@ -31,6 +33,7 @@ def test_create_project_rejects_undocumented_field(
             "description": "This request includes a field outside the contract.",
             "owner": "Undocumented client value",
         },
+        headers=admin_headers,
     )
 
     assert_validation_error(response)
@@ -50,6 +53,7 @@ def test_create_project_rejects_undocumented_field(
 )
 def test_create_project_rejects_invalid_boundary_values(
     database_client: TestClient,
+    admin_headers: dict[str, str],
     name: str,
     description: str,
 ) -> None:
@@ -57,6 +61,7 @@ def test_create_project_rejects_invalid_boundary_values(
     response = database_client.post(
         "/projects",
         json={"name": name, "description": description},
+        headers=admin_headers,
     )
 
     assert_validation_error(response)
@@ -73,10 +78,11 @@ def test_create_project_rejects_invalid_boundary_values(
 )
 def test_typed_path_parameters_reject_wrong_data_type(
     database_client: TestClient,
+    admin_headers: dict[str, str],
     path: str,
 ) -> None:
     """FastAPI rejects a non-integer resource identifier before the route runs."""
-    response = database_client.get(path)
+    response = database_client.get(path, headers=admin_headers)
 
     assert_validation_error(response)
 
@@ -92,10 +98,12 @@ def test_typed_path_parameters_reject_wrong_data_type(
     ids=["project", "task"],
 )
 def test_missing_resources_return_not_found(
-    database_client: TestClient, path: str
+    database_client: TestClient,
+    admin_headers: dict[str, str],
+    path: str,
 ) -> None:
     """A valid identifier with no matching resource returns the documented 404."""
-    response = database_client.get(path)
+    response = database_client.get(path, headers=admin_headers)
 
     assert response.status_code == 404
     assert response.json()["detail"]
@@ -103,6 +111,7 @@ def test_missing_resources_return_not_found(
 
 def test_create_task_rejects_nonexistent_parent_project(
     database_client: TestClient,
+    admin_headers: dict[str, str],
 ) -> None:
     """The Task relationship rule becomes a client-visible 404 response."""
     response = database_client.post(
@@ -113,6 +122,7 @@ def test_create_task_rejects_nonexistent_parent_project(
             "completed": False,
             "project_id": 999999,
         },
+        headers=admin_headers,
     )
 
     assert response.status_code == 404
@@ -121,12 +131,15 @@ def test_create_task_rejects_nonexistent_parent_project(
 
 def test_delete_project_rejects_project_with_related_tasks(
     database_client: TestClient,
+    admin_headers: dict[str, str],
 ) -> None:
     """A Project with Tasks remains protected by the documented 409 conflict."""
-    project = create_project(database_client)
-    create_task(database_client, project["id"])
+    project = create_project(database_client, admin_headers)
+    create_task(database_client, admin_headers, project["id"])
 
-    response = database_client.delete(f"/projects/{project['id']}")
+    response = database_client.delete(
+        f"/projects/{project['id']}", headers=admin_headers
+    )
 
     assert response.status_code == 409
     assert response.json()["detail"]
@@ -143,17 +156,25 @@ def assert_validation_error(response) -> None:
     assert detail
 
 
-def create_project(database_client: TestClient) -> dict:
+def create_project(
+    database_client: TestClient,
+    admin_headers: dict[str, str],
+) -> dict:
     """Create a Project needed by the deletion-conflict negative test."""
     response = database_client.post(
         "/projects",
         json={"name": "Protected Project", "description": "Has a related Task."},
+        headers=admin_headers,
     )
     assert response.status_code == 201
     return response.json()
 
 
-def create_task(database_client: TestClient, project_id: int) -> dict:
+def create_task(
+    database_client: TestClient,
+    admin_headers: dict[str, str],
+    project_id: int,
+) -> dict:
     """Create a related Task that makes the Project deletion invalid."""
     response = database_client.post(
         "/tasks",
@@ -163,6 +184,7 @@ def create_task(database_client: TestClient, project_id: int) -> dict:
             "completed": False,
             "project_id": project_id,
         },
+        headers=admin_headers,
     )
     assert response.status_code == 201
     return response.json()

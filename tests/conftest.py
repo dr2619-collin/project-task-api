@@ -33,6 +33,10 @@ complete pytest command. The database reset, SQLAlchemy Session, and both
 TestClient fixtures use the default `scope="function"`, so each test function
 starts with isolated state. These pytest fixture scopes are separate from the
 SQLAlchemy `Session` object created for database work.
+
+Authentication is separate from backend selection. `member_headers` and
+`admin_headers` provide explicit Bearer headers that tests pass to requests;
+the `database_client` and `memory_client` fixtures remain unauthenticated.
 """
 
 import os
@@ -43,6 +47,9 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 from starlette.testclient import TestClient
 from testcontainers.community.postgres import PostgresContainer
+
+from app.auth.users import Role, get_demo_token_for_role
+from app.config import Settings, StorageBackend
 
 
 @pytest.fixture(scope="session")
@@ -170,3 +177,55 @@ def memory_client(
         # FastAPI's lifespan creates a fresh InMemoryStore for this client, so
         # projects and tasks cannot leak between memory router tests.
         yield test_client
+
+
+@pytest.fixture
+def demo_settings() -> Settings:
+    """Load token settings without requiring a database URL."""
+    return Settings(storage_backend=StorageBackend.MEMORY)
+
+
+@pytest.fixture
+def member_headers(demo_settings: Settings) -> dict[str, str]:
+    """Provide the Authorization header for the course-demo member role."""
+    return {
+        "Authorization": f"Bearer {get_demo_token_for_role(Role.MEMBER, demo_settings)}"
+    }
+
+
+@pytest.fixture
+def admin_headers(demo_settings: Settings) -> dict[str, str]:
+    """Provide the Authorization header for the course-demo administrator role."""
+    return {
+        "Authorization": f"Bearer {get_demo_token_for_role(Role.ADMIN, demo_settings)}"
+    }
+
+
+@pytest.fixture
+def admin_client(
+    database_client: TestClient,
+    admin_headers: dict[str, str],
+) -> TestClient:
+    """Provide the per-test API client configured as an administrator.
+
+    The ordinary ``database_client`` fixture stays unauthenticated so Module
+    08 tests can explicitly verify missing-token behavior. Each test receives
+    a fresh TestClient, so setting these default headers cannot affect another
+    test.
+    """
+    database_client.headers.update(admin_headers)
+    return database_client
+
+
+@pytest.fixture
+def member_client(
+    database_client: TestClient,
+    member_headers: dict[str, str],
+) -> TestClient:
+    """Provide the per-test API client configured as a member.
+
+    Each test receives a fresh TestClient, so setting this default header does
+    not affect the ordinary unauthenticated client or administrator tests.
+    """
+    database_client.headers.update(member_headers)
+    return database_client

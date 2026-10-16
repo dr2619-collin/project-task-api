@@ -2,8 +2,14 @@
 
 from fastapi import Request
 
+from app.config import Settings
 from app.services.projects import ProjectService
 from app.services.tasks import TaskService
+
+
+def get_settings(request: Request) -> Settings:
+    """Return the validated settings created during application startup."""
+    return request.app.state.settings
 
 
 def get_project_service(request: Request) -> ProjectService:

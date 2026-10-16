@@ -115,6 +115,7 @@ def test_openapi_document_describes_project_and_task_schemas(
 
 def test_create_project_matches_its_documented_public_response(
     database_client: TestClient,
+    admin_headers: dict[str, str],
 ) -> None:
     """A created Project has the documented status and response shape."""
     response = database_client.post(
@@ -123,6 +124,7 @@ def test_create_project_matches_its_documented_public_response(
             "name": "Contract Test Project",
             "description": "Verify the documented Project response.",
         },
+        headers=admin_headers,
     )
 
     assert response.status_code == 201
@@ -136,9 +138,10 @@ def test_create_project_matches_its_documented_public_response(
 
 def test_missing_project_matches_documented_not_found_response(
     database_client: TestClient,
+    admin_headers: dict[str, str],
 ) -> None:
     """A consumer receives the documented 404 outcome for a missing Project."""
-    response = database_client.get("/projects/999999")
+    response = database_client.get("/projects/999999", headers=admin_headers)
 
     assert response.status_code == 404
     assert response.json()["detail"]
@@ -146,12 +149,15 @@ def test_missing_project_matches_documented_not_found_response(
 
 def test_project_with_tasks_matches_documented_conflict_response(
     database_client: TestClient,
+    admin_headers: dict[str, str],
 ) -> None:
     """Deleting a Project with Tasks returns the documented 409 outcome."""
-    project = create_project(database_client)
-    create_task(database_client, project["id"])
+    project = create_project(database_client, admin_headers)
+    create_task(database_client, admin_headers, project["id"])
 
-    response = database_client.delete(f"/projects/{project['id']}")
+    response = database_client.delete(
+        f"/projects/{project['id']}", headers=admin_headers
+    )
 
     assert response.status_code == 409
     assert response.json()["detail"]
@@ -193,12 +199,13 @@ schema = schemathesis.pytest.from_fixture("openapi_schema").include(
 def test_generated_read_only_responses_conform_to_openapi(
     case: Any,
     database_client: TestClient,
+    admin_headers: dict[str, str],
 ) -> None:
     """Generated safe requests receive responses valid for their OpenAPI schema."""
     # TestClient sends the generated request directly to the running ASGI app.
     # Schemathesis then checks the status code, headers, and response body
     # against the operation described in `/openapi.json`.
-    case.call_and_validate(session=database_client)
+    case.call_and_validate(session=database_client, headers=admin_headers)
 
 
 # HELPERS
@@ -224,17 +231,25 @@ def paths_response_schema(
     ]["application/json"]["schema"]
 
 
-def create_project(database_client: TestClient) -> dict[str, Any]:
+def create_project(
+    database_client: TestClient,
+    admin_headers: dict[str, str],
+) -> dict[str, Any]:
     """Create a parent Project required by the conflict scenario."""
     response = database_client.post(
         "/projects",
         json={"name": "Conflict Project", "description": "Has a related Task."},
+        headers=admin_headers,
     )
     assert response.status_code == 201
     return response.json()
 
 
-def create_task(database_client: TestClient, project_id: int) -> dict[str, Any]:
+def create_task(
+    database_client: TestClient,
+    admin_headers: dict[str, str],
+    project_id: int,
+) -> dict[str, Any]:
     """Create the Task that makes Project deletion a conflict."""
     response = database_client.post(
         "/tasks",
@@ -244,6 +259,7 @@ def create_task(database_client: TestClient, project_id: int) -> dict[str, Any]:
             "completed": False,
             "project_id": project_id,
         },
+        headers=admin_headers,
     )
     assert response.status_code == 201
     return response.json()

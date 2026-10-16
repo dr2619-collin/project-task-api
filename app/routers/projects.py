@@ -2,6 +2,12 @@
 
 from fastapi import APIRouter, Depends, Response, status
 
+from app.auth.dependencies import (
+    ADMIN_RESPONSES,
+    AUTHENTICATED_RESPONSES,
+    AdminUser,
+    CurrentUser,
+)
 from app.dependencies import get_project_service
 from app.exceptions import ProjectHasTasksError, ProjectNotFoundError
 from app.models.project import Project
@@ -15,13 +21,17 @@ router = APIRouter(prefix="/projects", tags=["Projects"])
 
 
 # GET /projects reads the entire Project collection.
+# `_current_user` is intentionally unused: declaring the dependency makes
+# FastAPI validate the Bearer token and reject unauthenticated requests first.
 @router.get(
     "",
     response_model=list[ProjectResponse],
     summary="List all projects",
     description="Return every project currently stored by the application.",
+    responses=AUTHENTICATED_RESPONSES,
 )
 def list_projects(
+    _current_user: CurrentUser,
     service: ProjectService = Depends(get_project_service),
 ) -> list[Project]:
     """Delegate Project retrieval to the service layer."""
@@ -34,10 +44,14 @@ def list_projects(
     response_model=ProjectResponse,
     summary="Get one project",
     description="Return the project identified by the path parameter.",
-    responses={404: {"description": "Project not found"}},
+    responses={
+        **AUTHENTICATED_RESPONSES,
+        404: {"description": "Project not found"},
+    },
 )
 def get_project(
     project_id: int,
+    _current_user: CurrentUser,
     service: ProjectService = Depends(get_project_service),
 ) -> Project:
     """Return one Project or translate the missing-resource error."""
@@ -54,9 +68,11 @@ def get_project(
     status_code=status.HTTP_201_CREATED,
     summary="Create a project",
     description="Create a project from a validated name and description.",
+    responses=ADMIN_RESPONSES,
 )
 def create_project(
     data: ProjectInput,
+    _admin_user: AdminUser,
     service: ProjectService = Depends(get_project_service),
 ) -> Project:
     """Pass validated input to the business and persistence layers."""
@@ -69,11 +85,15 @@ def create_project(
     response_model=ProjectResponse,
     summary="Replace a project",
     description="Replace all editable fields of an existing project.",
-    responses={404: {"description": "Project not found"}},
+    responses={
+        **ADMIN_RESPONSES,
+        404: {"description": "Project not found"},
+    },
 )
 def replace_project(
     project_id: int,
     data: ProjectInput,
+    _admin_user: AdminUser,
     service: ProjectService = Depends(get_project_service),
 ) -> Project:
     """Replace one Project through the service layer."""
@@ -90,12 +110,14 @@ def replace_project(
     summary="Delete a project",
     description="Delete a project only when it has no related tasks.",
     responses={
+        **ADMIN_RESPONSES,
         404: {"description": "Project not found"},
         409: {"description": "Project still has related tasks"},
     },
 )
 def delete_project(
     project_id: int,
+    _admin_user: AdminUser,
     service: ProjectService = Depends(get_project_service),
 ) -> Response:
     """Translate Project deletion outcomes into HTTP responses."""
@@ -114,10 +136,14 @@ def delete_project(
     response_model=list[TaskResponse],
     summary="List a project's tasks",
     description="Return every task that belongs to the requested project.",
-    responses={404: {"description": "Project not found"}},
+    responses={
+        **AUTHENTICATED_RESPONSES,
+        404: {"description": "Project not found"},
+    },
 )
 def list_project_tasks(
     project_id: int,
+    _current_user: CurrentUser,
     service: ProjectService = Depends(get_project_service),
 ) -> list[Task]:
     """Return related Tasks after the service verifies the Project."""

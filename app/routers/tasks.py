@@ -2,6 +2,12 @@
 
 from fastapi import APIRouter, Depends, Response, status
 
+from app.auth.dependencies import (
+    ADMIN_RESPONSES,
+    AUTHENTICATED_RESPONSES,
+    AdminUser,
+    CurrentUser,
+)
 from app.dependencies import get_task_service
 from app.exceptions import ProjectNotFoundError, TaskNotFoundError
 from app.models.task import Task
@@ -18,8 +24,11 @@ router = APIRouter(prefix="/tasks", tags=["Tasks"])
     response_model=list[TaskResponse],
     summary="List all tasks",
     description="Return every task currently stored by the application.",
+    responses=AUTHENTICATED_RESPONSES,
 )
-def list_tasks(service: TaskService = Depends(get_task_service)) -> list[Task]:
+def list_tasks(
+        _current_user: CurrentUser,
+        service: TaskService = Depends(get_task_service)) -> list[Task]:
     """Delegate Task retrieval to the service layer."""
     return service.list_tasks()
 
@@ -29,10 +38,14 @@ def list_tasks(service: TaskService = Depends(get_task_service)) -> list[Task]:
     response_model=TaskResponse,
     summary="Get one task",
     description="Return the task identified by the path parameter.",
-    responses={404: {"description": "Task not found"}},
+    responses={
+        **AUTHENTICATED_RESPONSES,
+        404: {"description": "Task not found"},
+    },
 )
 def get_task(
     task_id: int,
+    _current_user: CurrentUser,
     service: TaskService = Depends(get_task_service),
 ) -> Task:
     """Return one Task or translate the missing-resource error."""
@@ -48,10 +61,14 @@ def get_task(
     status_code=status.HTTP_201_CREATED,
     summary="Create a task",
     description="Create a task and associate it with an existing project.",
-    responses={404: {"description": "Related project not found"}},
+    responses={
+        **ADMIN_RESPONSES,
+        404: {"description": "Related project not found"},
+    },
 )
 def create_task(
     data: TaskInput,
+    _admin_user: AdminUser,
     service: TaskService = Depends(get_task_service),
 ) -> Task:
     """Create a Task after the service verifies its business rules."""
@@ -66,11 +83,15 @@ def create_task(
     response_model=TaskResponse,
     summary="Replace a task",
     description="Replace all editable fields and verify the related project.",
-    responses={404: {"description": "Task or related project not found"}},
+    responses={
+        **ADMIN_RESPONSES,
+        404: {"description": "Task or related project not found"},
+    },
 )
 def replace_task(
     task_id: int,
     data: TaskInput,
+    _admin_user: AdminUser,
     service: TaskService = Depends(get_task_service),
 ) -> Task:
     """Replace a Task after checking both related resources."""
@@ -87,10 +108,14 @@ def replace_task(
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Delete a task",
     description="Delete the task identified by the path parameter.",
-    responses={404: {"description": "Task not found"}},
+    responses={
+        **ADMIN_RESPONSES,
+        404: {"description": "Task not found"},
+    },
 )
 def delete_task(
     task_id: int,
+    _admin_user: AdminUser,
     service: TaskService = Depends(get_task_service),
 ) -> Response:
     """Delete a Task and translate the service outcome into HTTP."""

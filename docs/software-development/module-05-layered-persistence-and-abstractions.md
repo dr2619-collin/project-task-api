@@ -308,6 +308,8 @@ class Settings(BaseSettings):
     database_url: str | None = None
     database_echo_sql: bool = False
     storage_backend: StorageBackend = StorageBackend.DATABASE
+    demo_member_token: str = "member-demo-token"
+    demo_admin_token: str = "admin-demo-token"
 ```
 
 `StorageBackend` is an enum field inside `Settings`. It defines the supported
@@ -334,6 +336,8 @@ The repository checks in [`.env.example`](../../.env.example) as a safe template
 STORAGE_BACKEND=database
 DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/project_task
 DATABASE_ECHO_SQL=false
+DEMO_MEMBER_TOKEN=member-demo-token
+DEMO_ADMIN_TOKEN=admin-demo-token
 ```
 
 Credential safety:

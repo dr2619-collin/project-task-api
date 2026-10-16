@@ -11,3 +11,4 @@ This cumulative guide follows the Project and Task API in the order concepts app
 - [Module 05 — Layered persistence and abstractions](software-development/module-05-layered-persistence-and-abstractions.md)
 - [Module 06 — Reliable automated testing](software-development/module-06-reliable-automated-testing.md)
 - [Module 07 — Testing public behavior](software-development/module-07-testing-public-behavior.md)
+- [Module 08 — Authentication and authorization](software-development/module-08-authentication-and-authorization.md)
