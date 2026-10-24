@@ -54,7 +54,7 @@ If you have not already cloned the repository, run:
 cd $HOME
 git clone https://github.com/dr2619-collin/project-task-api.git
 cd project-task-api
-git switch module-07
+git switch module-08
 ```
 
 If the project is already cloned, skip these commands and open a terminal in

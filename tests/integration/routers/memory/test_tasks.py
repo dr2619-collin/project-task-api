@@ -3,9 +3,12 @@
 from starlette.testclient import TestClient
 
 
-def test_task_crud_works_with_memory_client(memory_client: TestClient) -> None:
+def test_task_crud_works_with_memory_client(
+    memory_client: TestClient,
+    admin_headers: dict[str, str],
+) -> None:
     """The Task router works when DI selects the in-memory service."""
-    project = create_project(memory_client)
+    project = create_project(memory_client, admin_headers)
     create_response = memory_client.post(
         "/tasks",
         json={
@@ -14,12 +17,15 @@ def test_task_crud_works_with_memory_client(memory_client: TestClient) -> None:
             "completed": False,
             "project_id": project["id"],
         },
+        headers=admin_headers,
     )
 
     assert create_response.status_code == 201
     task = create_response.json()
 
-    get_response = memory_client.get(f"/tasks/{task['id']}")
+    get_response = memory_client.get(
+        f"/tasks/{task['id']}", headers=admin_headers
+    )
     assert get_response.status_code == 200
     assert get_response.json() == task
 
@@ -31,16 +37,22 @@ def test_task_crud_works_with_memory_client(memory_client: TestClient) -> None:
             "completed": True,
             "project_id": project["id"],
         },
+        headers=admin_headers,
     )
     assert replace_response.status_code == 200
 
-    delete_response = memory_client.delete(f"/tasks/{task['id']}")
+    delete_response = memory_client.delete(
+        f"/tasks/{task['id']}", headers=admin_headers
+    )
     assert delete_response.status_code == 204
     assert delete_response.content == b""
-    assert memory_client.get("/tasks").json() == []
+    assert memory_client.get("/tasks", headers=admin_headers).json() == []
 
 
-def create_project(memory_client: TestClient) -> dict:
+def create_project(
+    memory_client: TestClient,
+    admin_headers: dict[str, str],
+) -> dict:
     """Create the parent Project required by a Task request."""
     response = memory_client.post(
         "/projects",
@@ -48,6 +60,7 @@ def create_project(memory_client: TestClient) -> dict:
             "name": "Memory Task Parent",
             "description": "Parent project for the memory task test.",
         },
+        headers=admin_headers,
     )
     assert response.status_code == 201
     return response.json()

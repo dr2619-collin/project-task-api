@@ -1,8 +1,10 @@
 # Conformance and Contract Testing
 
-Module 07 extends the Module 06 test suite with tests for the API's public agreement: its OpenAPI document and the HTTP behavior clients receive.
+Module 08 retains the Module 07 conformance tests and adds security checks for
+the API's Bearer authentication contract.
 
-For the Module 06 unit-test, integration-test, fixture, and Testcontainers foundation, see [Unit and Integration Testing](testing-unit-integration.md).
+For the Module 06 unit-test, integration-test, fixture, and Testcontainers
+foundation, see [Unit and Integration Testing](testing-unit-integration.md).
 
 ## Testing purpose and approach
 
@@ -34,15 +36,19 @@ The **OpenAPI contract** describes the API's paths, HTTP methods, request bodies
 tests/
 ├── conftest.py
 ├── conformance/
+│   ├── test_authentication_authorization_contract.py
 │   ├── test_negative_requests.py
 │   └── test_openapi_contract.py
 ├── integration/
 │   └── ... Module 06 tests ...
 └── unit/
-    └── ... Module 06 tests ...
+    └── ... Module 06 and Module 07 tests ...
 ```
 
-The conformance tests reuse the Module 06 `database_client` fixture:
+The conformance tests use the Module 08 `database_client` fixture. Tests that
+need an authenticated role pass the `member_headers` or `admin_headers` fixture
+explicitly to the request. This keeps storage selection separate from
+authentication:
 
 ```text
 TestClient -> FastAPI router -> service -> repository -> SQLAlchemy -> PostgreSQL Testcontainer
@@ -89,6 +95,8 @@ The targeted tests send real requests and verify consumer-visible behavior:
 - Deleting a Project with related Tasks returns `409 Conflict`.
 
 The tests assert stable contract details—status codes and JSON shapes—not the exact human-readable `detail` text unless that text is intentionally documented as part of the contract.
+
+Module 08 also adds a focused security-contract test. It confirms that OpenAPI publishes the reusable HTTP Bearer scheme, marks representative resource operations as protected, and documents their `401` and `403` outcomes.
 
 ## Negative testing
 
