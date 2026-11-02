@@ -1,6 +1,11 @@
 """HTTP endpoints for the Project resource."""
 
+import asyncio
+import json
+from collections.abc import AsyncIterator
+
 from fastapi import APIRouter, Depends, Response, status
+from fastapi.responses import StreamingResponse
 
 from app.auth.dependencies import (
     ADMIN_RESPONSES,
@@ -39,6 +44,36 @@ def list_projects(
 ) -> list[Project]:
     """Delegate Project retrieval to the service layer."""
     return service.list_projects()
+
+
+# Keep the fixed route above /{project_id}, where "stream" would not be an int.
+async def project_update_events() -> AsyncIterator[str]:
+    """Yield a finite sequence of demonstration Project update events."""
+    for sequence in range(1, 4):
+        payload = json.dumps(
+            {"sequence": sequence, "message": "Demonstration project update"}
+        )
+        yield f"event: project-update\ndata: {payload}\n\n"
+        if sequence < 3:
+            await asyncio.sleep(0.25)
+
+
+@router.get(
+    "/stream",
+    summary="Stream demonstration project updates",
+    description="Send a finite sequence of project-update events over HTTP.",
+    response_class=StreamingResponse,
+    responses={
+        200: {
+            "description": "A finite Server-Sent Event-style project update stream.",
+            "content": {"text/event-stream": {"schema": {"type": "string"}}},
+        },
+        **AUTHENTICATED_RESPONSES,
+    },
+)
+async def stream_project_updates(_current_user: CurrentUser) -> StreamingResponse:
+    """Return a protected stream without opening a database session."""
+    return StreamingResponse(project_update_events(), media_type="text/event-stream")
 
 
 # The value inside {project_id} is supplied by the URL path.
