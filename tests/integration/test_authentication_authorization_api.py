@@ -20,7 +20,9 @@ def test_protected_read_rejects_a_missing_token(database_client: TestClient) -> 
     response = database_client.get("/projects")
 
     assert response.status_code == 401
-    assert response.json() == {"detail": "Missing or invalid Bearer token"}
+    assert response.headers["content-type"].startswith("application/problem+json")
+    assert response.json()["detail"] == "Missing or invalid Bearer token"
+    assert response.json()["status"] == 401
     assert response.headers["www-authenticate"] == "Bearer"
 
 
@@ -32,6 +34,7 @@ def test_protected_read_rejects_an_unknown_token(database_client: TestClient) ->
     )
 
     assert response.status_code == 401
+    assert response.headers["content-type"].startswith("application/problem+json")
     assert response.headers["www-authenticate"] == "Bearer"
 
 
@@ -98,7 +101,9 @@ def test_member_cannot_use_administrator_only_write_routes(
     )
 
     assert response.status_code == 403
-    assert response.json() == {"detail": "Administrator role required"}
+    assert response.headers["content-type"].startswith("application/problem+json")
+    assert response.json()["detail"] == "Administrator role required"
+    assert response.json()["status"] == 403
 
 
 def test_administrator_can_complete_a_project_and_task_write_workflow(

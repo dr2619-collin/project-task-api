@@ -2,15 +2,20 @@
 
 The Project and Task Management API organizes work into Projects and Tasks. Users can create, view, replace, and delete both resources, and each Task belongs to one Project. This repository is the cumulative course demonstration for SDEV 3310; every module branch builds on the previous one.
 
-## Module 09 scope
+## Module 10 scope
 
-Module 09 introduces synchronous and asynchronous I/O handling in FastAPI. It adds two public demonstration endpoints that simulate a slow external dependency without relying on a real third-party API or changing Project and Task data.
+Module 10 adds consistent RFC 9457 Problem Details responses for API errors and
+introduces a versioned path for Project and Task operations. New clients should
+use `/api/v1`; the original unversioned paths remain available during a
+deprecation period and advertise their versioned replacements.
 
-The existing Project and Task CRUD routes remain synchronous because the current SQLAlchemy `Session` and PostgreSQL driver usage are synchronous. Changing only a route from `def` to `async def` would not make database work asynchronous and could block the event loop.
+Application services continue to raise domain errors without depending on
+HTTP. A shared error handler translates those outcomes, authentication and
+authorization failures, request-validation errors, and unexpected failures
+into the API's documented error format.
 
-The `/async-demo/sync-wait` endpoint uses a normal `def` route and a blocking simulated wait. FastAPI runs it in the threadpool. The `/async-demo/async-wait` endpoint uses `async def` and `await asyncio.sleep()`, allowing its coroutine to yield to the event loop while waiting.
-
-For the Module 09 demo procedure, k6 results, and the event-loop, threadpool, and async-I/O explanation, see [Async I/O](docs/async-io.md).
+For the response structure and API migration details, see
+[Error Handling and API Evolution](docs/error-handling-and-api-evolution.md).
 
 The application retains the Module 05 persistence architecture:
 
@@ -44,7 +49,7 @@ your terminal:
 ```text
 git clone https://github.com/dr2619-collin/project-task-api.git
 cd project-task-api
-git switch module-08
+git switch module-10
 ```
 
 ## Install dependencies
@@ -237,17 +242,17 @@ Requests without a valid token receive `401 Unauthorized`. A valid member token 
 
 | Method | URL | Operation | Successful status |
 |---|---|---|---|
-| `GET` | `/projects` | List Projects | `200 OK` |
-| `GET` | `/projects/{project_id}` | Get one Project | `200 OK` |
-| `POST` | `/projects` | Create a Project | `201 Created` |
-| `PUT` | `/projects/{project_id}` | Replace a Project | `200 OK` |
-| `DELETE` | `/projects/{project_id}` | Delete a Project | `204 No Content` |
-| `GET` | `/projects/{project_id}/tasks` | List one Project's Tasks | `200 OK` |
-| `GET` | `/tasks` | List Tasks | `200 OK` |
-| `GET` | `/tasks/{task_id}` | Get one Task | `200 OK` |
-| `POST` | `/tasks` | Create a Task | `201 Created` |
-| `PUT` | `/tasks/{task_id}` | Replace a Task | `200 OK` |
-| `DELETE` | `/tasks/{task_id}` | Delete a Task | `204 No Content` |
+| `GET` | `/api/v1/projects` | List Projects | `200 OK` |
+| `GET` | `/api/v1/projects/{project_id}` | Get one Project | `200 OK` |
+| `POST` | `/api/v1/projects` | Create a Project | `201 Created` |
+| `PUT` | `/api/v1/projects/{project_id}` | Replace a Project | `200 OK` |
+| `DELETE` | `/api/v1/projects/{project_id}` | Delete a Project | `204 No Content` |
+| `GET` | `/api/v1/projects/{project_id}/tasks` | List one Project's Tasks | `200 OK` |
+| `GET` | `/api/v1/tasks` | List Tasks | `200 OK` |
+| `GET` | `/api/v1/tasks/{task_id}` | Get one Task | `200 OK` |
+| `POST` | `/api/v1/tasks` | Create a Task | `201 Created` |
+| `PUT` | `/api/v1/tasks/{task_id}` | Replace a Task | `200 OK` |
+| `DELETE` | `/api/v1/tasks/{task_id}` | Delete a Task | `204 No Content` |
 
 Create a Project before creating its Tasks:
 
@@ -344,6 +349,7 @@ project-task-api/
 │   │   └── users.py
 │   ├── database/
 │   │   └── session.py
+│   ├── error_handlers.py
 │   ├── config.py
 │   ├── dependencies.py
 │   ├── models/
@@ -359,6 +365,7 @@ project-task-api/
 │   │   └── tasks.py
 │   ├── schemas/
 │   │   ├── async_demo.py
+│   │   ├── problem_details.py
 │   │   ├── projects.py
 │   │   └── tasks.py
 │   ├── services/
@@ -390,6 +397,7 @@ project-task-api/
 │   │   ├── test_negative_requests.py
 │   │   └── test_openapi_contract.py
 │   ├── integration/
+│   │   ├── test_error_handling_and_api_evolution.py
 │   │   ├── repositories/
 │   │   └── routers/
 │   │       ├── database/

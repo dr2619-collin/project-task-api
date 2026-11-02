@@ -29,7 +29,9 @@ class DatabaseProjectService(ProjectService):
         with self._session_factory() as session:
             project = ProjectRepository(session).get_by_id(project_id)
             if project is None:
-                raise ProjectNotFoundError
+                raise ProjectNotFoundError(
+                    f"No Project exists with id {project_id}."
+                )
             return project
 
     def create_project(self, data: ProjectInput) -> Project:
@@ -45,7 +47,9 @@ class DatabaseProjectService(ProjectService):
             repository = ProjectRepository(session)
             project = repository.get_by_id(project_id)
             if project is None:
-                raise ProjectNotFoundError
+                raise ProjectNotFoundError(
+                    f"No Project exists with id {project_id}."
+                )
             updated_project = repository.replace(project, data)
             session.refresh(updated_project)
             return updated_project
@@ -56,13 +60,19 @@ class DatabaseProjectService(ProjectService):
             repository = ProjectRepository(session)
             project = repository.get_by_id(project_id)
             if project is None:
-                raise ProjectNotFoundError
+                raise ProjectNotFoundError(
+                    f"No Project exists with id {project_id}."
+                )
             if TaskRepository(session).exists_for_project(project_id):
-                raise ProjectHasTasksError
+                raise ProjectHasTasksError(
+                    f"Project {project_id} cannot be deleted while it has related Tasks."
+                )
             repository.delete(project)
 
     def list_project_tasks(self, project_id: int) -> list[Task]:
         with self._session_factory() as session:
             if ProjectRepository(session).get_by_id(project_id) is None:
-                raise ProjectNotFoundError
+                raise ProjectNotFoundError(
+                    f"No Project exists with id {project_id}."
+                )
             return TaskRepository(session).list_by_project(project_id)

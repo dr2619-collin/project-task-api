@@ -9,9 +9,13 @@ from app.auth.dependencies import (
     CurrentUser,
 )
 from app.dependencies import get_task_service
-from app.exceptions import ProjectNotFoundError, TaskNotFoundError
 from app.models.task import Task
-from app.routers.http_errors import project_not_found, task_not_found
+from app.schemas.problem_details import (
+    PROJECT_NOT_FOUND_RESPONSE,
+    RELATED_RESOURCE_NOT_FOUND_RESPONSE,
+    TASK_NOT_FOUND_RESPONSE,
+    VALIDATION_PROBLEM_RESPONSE,
+)
 from app.schemas.tasks import TaskInput, TaskResponse
 from app.services.tasks import TaskService
 
@@ -40,7 +44,8 @@ def list_tasks(
     description="Return the task identified by the path parameter.",
     responses={
         **AUTHENTICATED_RESPONSES,
-        404: {"description": "Task not found"},
+        404: TASK_NOT_FOUND_RESPONSE,
+        422: VALIDATION_PROBLEM_RESPONSE,
     },
 )
 def get_task(
@@ -48,11 +53,8 @@ def get_task(
     _current_user: CurrentUser,
     service: TaskService = Depends(get_task_service),
 ) -> Task:
-    """Return one Task or translate the missing-resource error."""
-    try:
-        return service.get_task(task_id)
-    except TaskNotFoundError:
-        raise task_not_found() from None
+    """Return one Task; the global handler represents domain errors as HTTP."""
+    return service.get_task(task_id)
 
 
 @router.post(
@@ -63,7 +65,8 @@ def get_task(
     description="Create a task and associate it with an existing project.",
     responses={
         **ADMIN_RESPONSES,
-        404: {"description": "Related project not found"},
+        404: PROJECT_NOT_FOUND_RESPONSE,
+        422: VALIDATION_PROBLEM_RESPONSE,
     },
 )
 def create_task(
@@ -72,10 +75,7 @@ def create_task(
     service: TaskService = Depends(get_task_service),
 ) -> Task:
     """Create a Task after the service verifies its business rules."""
-    try:
-        return service.create_task(data)
-    except ProjectNotFoundError:
-        raise project_not_found() from None
+    return service.create_task(data)
 
 
 @router.put(
@@ -85,7 +85,8 @@ def create_task(
     description="Replace all editable fields and verify the related project.",
     responses={
         **ADMIN_RESPONSES,
-        404: {"description": "Task or related project not found"},
+        404: RELATED_RESOURCE_NOT_FOUND_RESPONSE,
+        422: VALIDATION_PROBLEM_RESPONSE,
     },
 )
 def replace_task(
@@ -95,12 +96,7 @@ def replace_task(
     service: TaskService = Depends(get_task_service),
 ) -> Task:
     """Replace a Task after checking both related resources."""
-    try:
-        return service.replace_task(task_id, data)
-    except TaskNotFoundError:
-        raise task_not_found() from None
-    except ProjectNotFoundError:
-        raise project_not_found() from None
+    return service.replace_task(task_id, data)
 
 
 @router.delete(
@@ -110,7 +106,8 @@ def replace_task(
     description="Delete the task identified by the path parameter.",
     responses={
         **ADMIN_RESPONSES,
-        404: {"description": "Task not found"},
+        404: TASK_NOT_FOUND_RESPONSE,
+        422: VALIDATION_PROBLEM_RESPONSE,
     },
 )
 def delete_task(
@@ -118,9 +115,6 @@ def delete_task(
     _admin_user: AdminUser,
     service: TaskService = Depends(get_task_service),
 ) -> Response:
-    """Delete a Task and translate the service outcome into HTTP."""
-    try:
-        service.delete_task(task_id)
-    except TaskNotFoundError:
-        raise task_not_found() from None
+    """Delete a Task; the global handler translates domain outcomes to HTTP."""
+    service.delete_task(task_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

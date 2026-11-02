@@ -25,7 +25,7 @@ class InMemoryTaskService(TaskService):
             for task in self._store.tasks:
                 if task.id == task_id:
                     return task
-            raise TaskNotFoundError
+            raise TaskNotFoundError(f"No Task exists with id {task_id}.")
 
     def create_task(self, data: TaskInput) -> Task:
         # Validate, generate the ID, and append while holding the lock.
@@ -33,7 +33,9 @@ class InMemoryTaskService(TaskService):
             if not any(
                 project.id == data.project_id for project in self._store.projects
             ):
-                raise ProjectNotFoundError
+                raise ProjectNotFoundError(
+                    f"No Project exists with id {data.project_id}."
+                )
             task = Task(
                 id=max((item.id for item in self._store.tasks), default=0) + 1,
                 **data.model_dump(),
@@ -47,7 +49,9 @@ class InMemoryTaskService(TaskService):
             if not any(
                 project.id == data.project_id for project in self._store.projects
             ):
-                raise ProjectNotFoundError
+                raise ProjectNotFoundError(
+                    f"No Project exists with id {data.project_id}."
+                )
             task.title = data.title
             task.description = data.description
             task.completed = data.completed

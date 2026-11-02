@@ -9,10 +9,13 @@ from app.auth.dependencies import (
     CurrentUser,
 )
 from app.dependencies import get_project_service
-from app.exceptions import ProjectHasTasksError, ProjectNotFoundError
 from app.models.project import Project
 from app.models.task import Task
-from app.routers.http_errors import project_has_tasks, project_not_found
+from app.schemas.problem_details import (
+    CONFLICT_PROBLEM_RESPONSE,
+    PROJECT_NOT_FOUND_RESPONSE,
+    VALIDATION_PROBLEM_RESPONSE,
+)
 from app.schemas.projects import ProjectInput, ProjectResponse
 from app.schemas.tasks import TaskResponse
 from app.services.projects import ProjectService
@@ -46,7 +49,8 @@ def list_projects(
     description="Return the project identified by the path parameter.",
     responses={
         **AUTHENTICATED_RESPONSES,
-        404: {"description": "Project not found"},
+        404: PROJECT_NOT_FOUND_RESPONSE,
+        422: VALIDATION_PROBLEM_RESPONSE,
     },
 )
 def get_project(
@@ -54,11 +58,8 @@ def get_project(
     _current_user: CurrentUser,
     service: ProjectService = Depends(get_project_service),
 ) -> Project:
-    """Return one Project or translate the missing-resource error."""
-    try:
-        return service.get_project(project_id)
-    except ProjectNotFoundError:
-        raise project_not_found() from None
+    """Return one Project; the global handler represents domain errors as HTTP."""
+    return service.get_project(project_id)
 
 
 # POST creates a new resource, so a successful request returns HTTP 201.
@@ -68,7 +69,7 @@ def get_project(
     status_code=status.HTTP_201_CREATED,
     summary="Create a project",
     description="Create a project from a validated name and description.",
-    responses=ADMIN_RESPONSES,
+    responses={**ADMIN_RESPONSES, 422: VALIDATION_PROBLEM_RESPONSE},
 )
 def create_project(
     data: ProjectInput,
@@ -87,7 +88,8 @@ def create_project(
     description="Replace all editable fields of an existing project.",
     responses={
         **ADMIN_RESPONSES,
-        404: {"description": "Project not found"},
+        404: PROJECT_NOT_FOUND_RESPONSE,
+        422: VALIDATION_PROBLEM_RESPONSE,
     },
 )
 def replace_project(
@@ -97,10 +99,7 @@ def replace_project(
     service: ProjectService = Depends(get_project_service),
 ) -> Project:
     """Replace one Project through the service layer."""
-    try:
-        return service.replace_project(project_id, data)
-    except ProjectNotFoundError:
-        raise project_not_found() from None
+    return service.replace_project(project_id, data)
 
 
 # A successful DELETE has no response body, so it returns HTTP 204.
@@ -111,8 +110,9 @@ def replace_project(
     description="Delete a project only when it has no related tasks.",
     responses={
         **ADMIN_RESPONSES,
-        404: {"description": "Project not found"},
-        409: {"description": "Project still has related tasks"},
+        404: PROJECT_NOT_FOUND_RESPONSE,
+        409: CONFLICT_PROBLEM_RESPONSE,
+        422: VALIDATION_PROBLEM_RESPONSE,
     },
 )
 def delete_project(
@@ -120,13 +120,8 @@ def delete_project(
     _admin_user: AdminUser,
     service: ProjectService = Depends(get_project_service),
 ) -> Response:
-    """Translate Project deletion outcomes into HTTP responses."""
-    try:
-        service.delete_project(project_id)
-    except ProjectNotFoundError:
-        raise project_not_found() from None
-    except ProjectHasTasksError:
-        raise project_has_tasks() from None
+    """Delete a Project; global handlers translate domain outcomes to HTTP."""
+    service.delete_project(project_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -138,7 +133,8 @@ def delete_project(
     description="Return every task that belongs to the requested project.",
     responses={
         **AUTHENTICATED_RESPONSES,
-        404: {"description": "Project not found"},
+        404: PROJECT_NOT_FOUND_RESPONSE,
+        422: VALIDATION_PROBLEM_RESPONSE,
     },
 )
 def list_project_tasks(
@@ -147,7 +143,4 @@ def list_project_tasks(
     service: ProjectService = Depends(get_project_service),
 ) -> list[Task]:
     """Return related Tasks after the service verifies the Project."""
-    try:
-        return service.list_project_tasks(project_id)
-    except ProjectNotFoundError:
-        raise project_not_found() from None
+    return service.list_project_tasks(project_id)
