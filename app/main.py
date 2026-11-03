@@ -2,6 +2,7 @@
 
 from contextlib import asynccontextmanager
 
+from anyio.to_thread import current_default_thread_limiter
 from fastapi import FastAPI
 
 from app import models  # noqa: F401  # Register ORM models before create_all().
@@ -13,6 +14,7 @@ from app.routers.tasks import router as tasks_router
 from app.services.in_memory_store import InMemoryStore
 from app.services.projects import DatabaseProjectService, InMemoryProjectService
 from app.services.tasks import DatabaseTaskService, InMemoryTaskService
+from app.routers.async_demo import router as async_demo_router
 
 # Tag descriptions organize related operations and explain each resource group
 # in Swagger UI and ReDoc.
@@ -29,6 +31,10 @@ tags_metadata = [
         "name": "Tasks",
         "description": "Create and manage tasks that belong to projects.",
     },
+    {
+        "name": "Async I/O",
+        "description": "Compare synchronous and asynchronous simulated I/O waits.",
+    },
 ]
 
 
@@ -39,6 +45,10 @@ async def lifespan(application: FastAPI):
     """Initialize application-scoped infrastructure at startup."""
     settings = Settings()
     application.state.settings = settings
+
+    # FastAPI runs normal `def` routes and synchronous dependencies in AnyIO's
+    # shared threadpool. This setting limits concurrent threadpool work.
+    current_default_thread_limiter().total_tokens = settings.sync_threadpool_size
 
     if settings.storage_backend is StorageBackend.MEMORY:
         store = InMemoryStore()
@@ -69,7 +79,7 @@ app = FastAPI(
         "shows how FastAPI, layered application code, SQLAlchemy, and PostgreSQL "
         "work together to provide persistent REST resources."
     ),
-    version="0.8.0",
+    version="0.9.0",
     openapi_tags=tags_metadata,
     lifespan=lifespan,
 )
@@ -78,6 +88,7 @@ app = FastAPI(
 # Keeping resource routes in a router prevents main.py from becoming crowded.
 app.include_router(projects_router)
 app.include_router(tasks_router)
+app.include_router(async_demo_router)
 
 
 # This decorator connects an HTTP GET request for "/" to read_root().
