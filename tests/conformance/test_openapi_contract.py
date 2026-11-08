@@ -143,8 +143,7 @@ def test_missing_project_matches_documented_not_found_response(
     """A consumer receives the documented 404 outcome for a missing Project."""
     response = database_client.get("/projects/999999", headers=admin_headers)
 
-    assert response.status_code == 404
-    assert response.json()["detail"]
+    assert_problem(response, 404)
 
 
 def test_project_with_tasks_matches_documented_conflict_response(
@@ -159,8 +158,7 @@ def test_project_with_tasks_matches_documented_conflict_response(
         f"/projects/{project['id']}", headers=admin_headers
     )
 
-    assert response.status_code == 409
-    assert response.json()["detail"]
+    assert_problem(response, 409)
 
 
 # SCHEMA-DRIVEN TESTING WITH SCHEMATHESIS
@@ -217,6 +215,15 @@ def assert_schema_fields(schema: dict[str, Any], expected_fields: set[str]) -> N
     assert schema["additionalProperties"] is False
     assert set(schema["properties"]) == expected_fields
     assert set(schema["required"]) == expected_fields - {"completed"}
+
+
+def assert_problem(response, status_code: int) -> None:
+    """Check common fields used by the API's Problem Details responses."""
+    assert response.status_code == status_code
+    assert response.headers["content-type"].startswith("application/problem+json")
+    body = response.json()
+    assert {"type", "title", "status", "detail", "instance"} <= set(body)
+    assert body["status"] == status_code
 
 
 def paths_response_schema(

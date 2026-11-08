@@ -13,3 +13,4 @@ This cumulative guide follows the Project and Task API in the order concepts app
 - [Module 07 — Testing public behavior](software-development/module-07-testing-public-behavior.md)
 - [Module 08 — Authentication and authorization](software-development/module-08-authentication-and-authorization.md)
 - [Module 09 — Async I/O and concurrency limits](software-development/module-09-async-io-and-concurrency.md)
+- [Module 10 — Evolve public APIs safely](software-development/module-10-evolve-public-apis-safely.md)

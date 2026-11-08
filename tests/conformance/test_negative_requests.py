@@ -105,8 +105,7 @@ def test_missing_resources_return_not_found(
     """A valid identifier with no matching resource returns the documented 404."""
     response = database_client.get(path, headers=admin_headers)
 
-    assert response.status_code == 404
-    assert response.json()["detail"]
+    assert_problem(response, 404)
 
 
 def test_create_task_rejects_nonexistent_parent_project(
@@ -125,8 +124,7 @@ def test_create_task_rejects_nonexistent_parent_project(
         headers=admin_headers,
     )
 
-    assert response.status_code == 404
-    assert response.json()["detail"]
+    assert_problem(response, 404)
 
 
 def test_delete_project_rejects_project_with_related_tasks(
@@ -141,19 +139,25 @@ def test_delete_project_rejects_project_with_related_tasks(
         f"/projects/{project['id']}", headers=admin_headers
     )
 
-    assert response.status_code == 409
-    assert response.json()["detail"]
+    assert_problem(response, 409)
 
 
 # HELPERS
 
 
 def assert_validation_error(response) -> None:
-    """Check FastAPI's stable 422 status and validation-error response shape."""
-    assert response.status_code == 422
-    detail = response.json()["detail"]
-    assert isinstance(detail, list)
-    assert detail
+    """Check the shared 422 Problem Details envelope and validation entries."""
+    assert_problem(response, 422)
+    assert response.json()["errors"]
+
+
+def assert_problem(response, status_code: int) -> None:
+    """Check common fields used by the API's Problem Details responses."""
+    assert response.status_code == status_code
+    assert response.headers["content-type"].startswith("application/problem+json")
+    body = response.json()
+    assert {"type", "title", "status", "detail", "instance"} <= set(body)
+    assert body["status"] == status_code
 
 
 def create_project(

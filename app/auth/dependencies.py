@@ -8,6 +8,10 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from app.config import Settings
 from app.dependencies import get_settings
 from app.auth.users import AuthenticatedUser, Role, get_user_for_token
+from app.schemas.problem_details import (
+    FORBIDDEN_PROBLEM_RESPONSE,
+    UNAUTHORIZED_PROBLEM_RESPONSE,
+)
 
 # auto_error=False lets this module return one clear 401 response for missing,
 # malformed, or unknown credentials instead of relying on framework defaults.
@@ -22,18 +26,11 @@ BearerCredentials = Annotated[
 
 # Reuse these descriptions in router decorators so API documentation states the
 # same security outcomes that the dependencies produce at runtime.
-UNAUTHORIZED_RESPONSE = {
-    "description": "Missing or invalid Bearer token",
-    "headers": {
-        "WWW-Authenticate": {
-            "description": "Authentication scheme required by this endpoint.",
-            "schema": {"type": "string"},
-        }
-    },
+AUTHENTICATED_RESPONSES = {401: UNAUTHORIZED_PROBLEM_RESPONSE}
+ADMIN_RESPONSES = {
+    401: UNAUTHORIZED_PROBLEM_RESPONSE,
+    403: FORBIDDEN_PROBLEM_RESPONSE,
 }
-FORBIDDEN_RESPONSE = {"description": "Administrator role required"}
-AUTHENTICATED_RESPONSES = {401: UNAUTHORIZED_RESPONSE}
-ADMIN_RESPONSES = {401: UNAUTHORIZED_RESPONSE, 403: FORBIDDEN_RESPONSE}
 
 
 def unauthenticated() -> HTTPException:

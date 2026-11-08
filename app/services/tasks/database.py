@@ -28,14 +28,16 @@ class DatabaseTaskService(TaskService):
         with self._session_factory() as session:
             task = TaskRepository(session).get_by_id(task_id)
             if task is None:
-                raise TaskNotFoundError
+                raise TaskNotFoundError(f"No Task exists with id {task_id}.")
             return task
 
     def create_task(self, data: TaskInput) -> Task:
         # Verify the parent and insert the child atomically.
         with self._session_factory.begin() as session:
             if ProjectRepository(session).get_by_id(data.project_id) is None:
-                raise ProjectNotFoundError
+                raise ProjectNotFoundError(
+                    f"No Project exists with id {data.project_id}."
+                )
             task = TaskRepository(session).create(data)
             session.refresh(task)
             return task
@@ -46,9 +48,11 @@ class DatabaseTaskService(TaskService):
             task_repository = TaskRepository(session)
             task = task_repository.get_by_id(task_id)
             if task is None:
-                raise TaskNotFoundError
+                raise TaskNotFoundError(f"No Task exists with id {task_id}.")
             if ProjectRepository(session).get_by_id(data.project_id) is None:
-                raise ProjectNotFoundError
+                raise ProjectNotFoundError(
+                    f"No Project exists with id {data.project_id}."
+                )
             updated_task = task_repository.replace(task, data)
             session.refresh(updated_task)
             return updated_task
@@ -58,5 +62,5 @@ class DatabaseTaskService(TaskService):
             task_repository = TaskRepository(session)
             task = task_repository.get_by_id(task_id)
             if task is None:
-                raise TaskNotFoundError
+                raise TaskNotFoundError(f"No Task exists with id {task_id}.")
             task_repository.delete(task)

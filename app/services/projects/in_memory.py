@@ -26,7 +26,7 @@ class InMemoryProjectService(ProjectService):
             for project in self._store.projects:
                 if project.id == project_id:
                     return project
-            raise ProjectNotFoundError
+            raise ProjectNotFoundError(f"No Project exists with id {project_id}.")
 
     def create_project(self, data: ProjectInput) -> Project:
         # Lock ID generation and append as one operation.
@@ -49,7 +49,9 @@ class InMemoryProjectService(ProjectService):
         with self._store.lock:
             project = self.get_project(project_id)
             if any(task.project_id == project_id for task in self._store.tasks):
-                raise ProjectHasTasksError
+                raise ProjectHasTasksError(
+                    f"Project {project_id} cannot be deleted while it has related Tasks."
+                )
             self._store.projects.remove(project)
 
     def list_project_tasks(self, project_id: int) -> list[Task]:

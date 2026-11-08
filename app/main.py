@@ -7,14 +7,16 @@ from fastapi import FastAPI
 
 from app import models  # noqa: F401  # Register ORM models before create_all().
 from app.config import Settings, StorageBackend
-from app.models.base import Base
 from app.database.session import create_database
+from app.error_handlers import register_error_handlers
+from app.middleware.legacy_api import add_legacy_api_headers
+from app.models.base import Base
+from app.routers.async_demo import router as async_demo_router
 from app.routers.projects import router as projects_router
 from app.routers.tasks import router as tasks_router
 from app.services.in_memory_store import InMemoryStore
 from app.services.projects import DatabaseProjectService, InMemoryProjectService
 from app.services.tasks import DatabaseTaskService, InMemoryTaskService
-from app.routers.async_demo import router as async_demo_router
 
 # Tag descriptions organize related operations and explain each resource group
 # in Swagger UI and ReDoc.
@@ -79,15 +81,19 @@ app = FastAPI(
         "shows how FastAPI, layered application code, SQLAlchemy, and PostgreSQL "
         "work together to provide persistent REST resources."
     ),
-    version="0.9.0",
+    version="0.10.0",
     openapi_tags=tags_metadata,
     lifespan=lifespan,
 )
+register_error_handlers(app)
+app.middleware("http")(add_legacy_api_headers)
 
-# Add every Project route defined in app/routers/projects.py to the application.
-# Keeping resource routes in a router prevents main.py from becoming crowded.
-app.include_router(projects_router)
-app.include_router(tasks_router)
+
+# Keep the original paths during migration, but direct new clients to /api/v1.
+app.include_router(projects_router, deprecated=True)
+app.include_router(tasks_router, deprecated=True)
+app.include_router(projects_router, prefix="/api/v1")
+app.include_router(tasks_router, prefix="/api/v1")
 app.include_router(async_demo_router)
 
 
