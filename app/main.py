@@ -13,7 +13,9 @@ from app.middleware.legacy_api import add_legacy_api_headers
 from app.models.base import Base
 from app.routers.async_demo import router as async_demo_router
 from app.routers.projects import router as projects_router
+from app.routers.streaming import router as streaming_router
 from app.routers.tasks import router as tasks_router
+from app.routers.realtime import router as realtime_router
 from app.services.in_memory_store import InMemoryStore
 from app.services.projects import DatabaseProjectService, InMemoryProjectService
 from app.services.tasks import DatabaseTaskService, InMemoryTaskService
@@ -36,6 +38,14 @@ tags_metadata = [
     {
         "name": "Async I/O",
         "description": "Compare synchronous and asynchronous simulated I/O waits.",
+    },
+    {
+        "name": "Real-time",
+        "description": "Demonstrate process-local WebSocket messaging.",
+    },
+    {
+        "name": "Streaming",
+        "description": "Demonstrate finite HTTP streaming responses.",
     },
 ]
 
@@ -94,7 +104,9 @@ app.include_router(projects_router, deprecated=True)
 app.include_router(tasks_router, deprecated=True)
 app.include_router(projects_router, prefix="/api/v1")
 app.include_router(tasks_router, prefix="/api/v1")
+app.include_router(streaming_router, prefix="/api/v1")
 app.include_router(async_demo_router)
+app.include_router(realtime_router)
 
 
 # This decorator connects an HTTP GET request for "/" to read_root().

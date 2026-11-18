@@ -2,20 +2,19 @@
 
 The Project and Task Management API organizes work into Projects and Tasks. Users can create, view, replace, and delete both resources, and each Task belongs to one Project. This repository is the cumulative course demonstration for SDEV 3310; every module branch builds on the previous one.
 
-## Module 10 scope
+## Module 11 scope
 
-Module 10 adds consistent RFC 9457 Problem Details responses for API errors and
-introduces a versioned path for Project and Task operations. New clients should
-use `/api/v1`; the original unversioned paths remain available during a
-deprecation period and advertise their versioned replacements.
+Module 11 introduces HTTP streaming and WebSockets as communication approaches.
+`GET /api/v1/stream` is a public endpoint that sends a finite sequence of
+sample events. Run `curl -N http://localhost:8000/api/v1/stream` to see the
+frames arrive progressively. `ws://localhost:8000/ws/messages` is a public
+demonstration WebSocket that broadcasts each received text message as JSON to
+the other clients connected to the same application process.
 
-Application services continue to raise domain errors without depending on
-HTTP. A shared error handler translates those outcomes, authentication and
-authorization failures, request-validation errors, and unexpected failures
-into the API's documented error format.
-
-For the response structure and API migration details, see
-[Error Handling and API Evolution](docs/error-handling-and-api-evolution.md).
+Project and Task CRUD still use REST. The API retains Module 10's Problem
+Details error format and `/api/v1` routes; the original unversioned resource
+paths remain available during their deprecation period. See
+[WebSockets and Streaming](docs/websockets-and-streaming.md) for details.
 
 The application retains the Module 05 persistence architecture:
 
@@ -30,6 +29,8 @@ The application uses SQLAlchemy 2.x as its ORM and Psycopg as the PostgreSQL dri
 The service layer has database-backed and in-memory implementations behind the same service contracts. PostgreSQL is the default; set `STORAGE_BACKEND=memory` in `.env` to run the application with process-local lists instead.
 
 See [Software Development Principles and Practices](docs/software-development-principles.md) for the development practices demonstrated by the current module.
+For Module 11's framework-agnostic real-time communication principles, see
+[Real-Time Communication](docs/software-development/module-11-realtime-communication.md).
 
 ## Setup
 
@@ -225,6 +226,8 @@ The authentication and authorization implementation, role policy, and security-t
 
 For the sync-versus-async I/O demonstration, see [Async I/O](docs/async-io.md).
 
+For error formatting and API migration, see [Error Handling and API Evolution](docs/error-handling-and-api-evolution.md).
+
 ## Explore the API
 
 - `http://localhost:8000/docs` — Swagger UI for exploring and calling endpoints
@@ -253,6 +256,10 @@ Requests without a valid token receive `401 Unauthorized`. A valid member token 
 | `POST` | `/api/v1/tasks` | Create a Task | `201 Created` |
 | `PUT` | `/api/v1/tasks/{task_id}` | Replace a Task | `200 OK` |
 | `DELETE` | `/api/v1/tasks/{task_id}` | Delete a Task | `204 No Content` |
+
+The public WebSocket endpoint `ws://localhost:8000/ws/messages` is not an
+OpenAPI operation and therefore does not appear in Swagger UI. Use Postman or
+the browser-console example in [WebSockets and Streaming](docs/websockets-and-streaming.md).
 
 Create a Project before creating its Tasks:
 
@@ -362,7 +369,11 @@ project-task-api/
 │   ├── routers/
 │   │   ├── async_demo.py
 │   │   ├── projects.py
+│   │   ├── realtime.py
 │   │   └── tasks.py
+│   ├── realtime/
+│   │   ├── __init__.py
+│   │   └── connection_manager.py
 │   ├── schemas/
 │   │   ├── async_demo.py
 │   │   ├── problem_details.py
@@ -398,6 +409,7 @@ project-task-api/
 │   │   └── test_openapi_contract.py
 │   ├── integration/
 │   │   ├── test_error_handling_and_api_evolution.py
+│   │   ├── test_websockets_and_streaming.py
 │   │   ├── repositories/
 │   │   └── routers/
 │   │       ├── database/
